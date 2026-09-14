@@ -1,0 +1,19 @@
+# Optional dependencies for the Computer Use feature (desktop control).
+# These are kept separate from the core requirements because they pull in
+# OS-automation libraries that need a graphical session and, on macOS,
+# Accessibility + Screen Recording permissions.
+#
+# Install only if you want to enable computer use:
+#   pip install -r requirements-computer.txt
+#   export LOCALMIND_COMPUTER_USE_ENABLED=true
+#
+# On macOS you must also grant your terminal app Accessibility and Screen
+# Recording permission in System Settings > Privacy & Security.
+
+pyautogui==0.9.54
+pillow==11.0.0
+
+# macOS backends used by pyautogui for input/screenshots. Harmless to skip on
+# other platforms (pip will just not install them there).
+pyobjc-core==11.0 ; sys_platform == "darwin"
+pyobjc-framework-Quartz==11.0 ; sys_platform == "darwin"

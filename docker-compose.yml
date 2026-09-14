@@ -1,0 +1,53 @@
+# LocalMind full-stack composition.
+#
+# Brings up Ollama, the backend API, and the frontend. On first run, pull a
+# model into the Ollama container, e.g.:
+#   docker compose exec ollama ollama pull llama3.2
+#
+# GPU note: to use an NVIDIA GPU, uncomment the `deploy.resources` block on the
+# ollama service and ensure the NVIDIA Container Toolkit is installed.
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  backend:
+    build: ./backend
+    depends_on:
+      - ollama
+    environment:
+      LOCALMIND_OLLAMA_BASE_URL: http://ollama:11434
+      LOCALMIND_DATABASE_URL: sqlite+aiosqlite:////data/localmind.db
+      LOCALMIND_CORS_ORIGINS: '["http://localhost:3000"]'
+    volumes:
+      - backend-data:/data
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    environment:
+      # The browser talks to the backend directly on the host-published port.
+      NEXT_PUBLIC_API_BASE: http://localhost:8000
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  ollama-models:
+  backend-data:

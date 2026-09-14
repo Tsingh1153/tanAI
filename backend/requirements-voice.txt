@@ -1,0 +1,11 @@
+# Optional dependencies for local speech-to-text (voice input).
+# CPU-only (no PyTorch) via faster-whisper / CTranslate2.
+#
+# Install only if you want to talk to the assistant:
+#   pip install -r requirements-voice.txt
+#
+# The Whisper model (~150 MB for "base") downloads automatically on first use.
+# Text-to-speech (the assistant talking back) needs no dependencies — it uses
+# your browser's built-in speech synthesis.
+
+faster-whisper==1.0.3

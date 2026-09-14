@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* KaTeX (LaTeX) and highlight.js theme for rendered markdown. */
+@import "katex/dist/katex.min.css";
+@import "highlight.js/styles/github-dark.css";
+
+/* Design tokens. Warm, Claude-inspired neutrals. Values are space-separated RGB
+   channels so Tailwind's `<alpha-value>` opacity modifiers work. */
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Light mode — soft violet-tinted neutrals with a violet accent. */
+  --canvas: 249 247 253;
+  --surface: 255 255 255;
+  --elevated: 245 241 253;
+  --border: 231 224 245;
+  --content: 42 34 54;
+  --muted: 118 108 138;
+  --accent: 124 58 237;
+  --accent-2: 168 85 247;
+  --accent-soft: 243 237 254;
+  --accent-fg: 255 255 255;
+}
+
+.dark {
+  /* Dark mode — deep dark purple with a luminous violet accent. */
+  --canvas: 23 18 33;
+  --surface: 32 25 46;
+  --elevated: 42 33 60;
+  --border: 58 46 82;
+  --content: 236 231 246;
+  --muted: 168 156 190;
+  --accent: 167 139 250;
+  --accent-2: 192 132 252;
+  --accent-soft: 45 33 66;
+  --accent-fg: 26 20 38;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: rgb(var(--canvas));
+  color: rgb(var(--content));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin, unobtrusive scrollbars matching the theme. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--border));
+  border-radius: 9999px;
+}
+
+/* Markdown prose defaults (scoped via .prose-content on the container). */
+.prose-content {
+  line-height: 1.7;
+  word-break: break-word;
+}
+.prose-content p {
+  margin: 0.5rem 0;
+}
+.prose-content h1,
+.prose-content h2,
+.prose-content h3 {
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  line-height: 1.3;
+}
+.prose-content h1 { font-size: 1.4rem; }
+.prose-content h2 { font-size: 1.2rem; }
+.prose-content h3 { font-size: 1.05rem; }
+.prose-content ul,
+.prose-content ol {
+  margin: 0.5rem 0;
+  padding-left: 1.4rem;
+}
+.prose-content ul { list-style: disc; }
+.prose-content ol { list-style: decimal; }
+.prose-content li { margin: 0.2rem 0; }
+.prose-content a {
+  color: rgb(var(--accent));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-content blockquote {
+  border-left: 3px solid rgb(var(--border));
+  padding-left: 0.9rem;
+  color: rgb(var(--muted));
+  margin: 0.7rem 0;
+}
+.prose-content code:not(pre code) {
+  background: rgb(var(--elevated));
+  border: 1px solid rgb(var(--border));
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.35rem;
+  font-size: 0.88em;
+  font-family: var(--font-mono);
+}
+.prose-content pre {
+  background: #0d1117;
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.6rem;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  margin: 0.7rem 0;
+  font-size: 0.85rem;
+}
+.prose-content table {
+  border-collapse: collapse;
+  margin: 0.7rem 0;
+  display: block;
+  overflow-x: auto;
+}
+.prose-content th,
+.prose-content td {
+  border: 1px solid rgb(var(--border));
+  padding: 0.4rem 0.7rem;
+  text-align: left;
+}
+.prose-content th { background: rgb(var(--elevated)); }
+
+/* Brand wordmark gradient. */
+.brand-gradient {
+  background-image: linear-gradient(
+    120deg,
+    rgb(var(--accent)),
+    rgb(var(--accent-2))
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Gentle entrance for chat turns and cards. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-rise {
+  animation: rise 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Blinking cursor shown while a response streams. */
+.stream-caret::after {
+  content: "▍";
+  margin-left: 1px;
+  animation: blink 1s steps(2, start) infinite;
+  color: rgb(var(--muted));
+}
+@keyframes blink {
+  to { visibility: hidden; }
+}

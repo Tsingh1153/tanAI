@@ -22,12 +22,12 @@ import httpx  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 import app.main as main  # noqa: E402
+from app.config import get_settings  # noqa: E402
 from app.main import app  # noqa: E402
 from app.providers import build_default_registry  # noqa: E402
 from app.providers.base import ChatMessage, LLMProvider, ProviderModel  # noqa: E402
 from app.providers.openai_provider import OpenAICompatibleProvider  # noqa: E402
 from app.rag.embeddings import EmbeddingProvider  # noqa: E402
-from app.config import get_settings  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #
@@ -56,9 +56,7 @@ def test_openai_sse_parsing() -> None:
         assert models[0].name == "gpt-test"
         tokens = [
             t
-            async for t in provider.stream_chat(
-                "gpt-test", [ChatMessage("user", "hi")]
-            )
+            async for t in provider.stream_chat("gpt-test", [ChatMessage("user", "hi")])
         ]
         assert "".join(tokens) == "Hello world"
         await provider.aclose()
@@ -158,9 +156,7 @@ def test_provider_crud_and_routing(monkeypatch) -> None:
         conv = client.post("/api/conversations", json={}).json()
         tokens: list[str] = []
         with client.websocket_connect(f"/ws/chat/{conv['id']}") as ws:
-            ws.send_json(
-                {"content": "hi", "provider": "my-cloud", "model": "gpt-fake"}
-            )
+            ws.send_json({"content": "hi", "provider": "my-cloud", "model": "gpt-fake"})
             while True:
                 ev = ws.receive_json()
                 if ev["type"] == "token":

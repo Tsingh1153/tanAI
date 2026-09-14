@@ -1,9 +1,4 @@
-"""AUTOMATIC1111-compatible Stable Diffusion backend.
-
-Talks to the ``/sdapi/v1/txt2img`` endpoint exposed by AUTOMATIC1111's WebUI
-(run with ``--api``) and API-compatible forks (SD.Next, Forge). Returns base64
-PNGs which we decode to bytes.
-"""
+"""AUTOMATIC1111-compatible Stable Diffusion backend (/sdapi/v1/txt2img)."""
 
 from __future__ import annotations
 
@@ -30,9 +25,7 @@ class Automatic1111Generator(ImageGenerator):
         except httpx.HTTPError:
             return False
 
-    async def generate(
-        self, prompt: str, size: int, steps: int, n: int
-    ) -> list[bytes]:
+    async def generate(self, prompt: str, size: int, steps: int, n: int) -> list[bytes]:
         body = {
             "prompt": prompt,
             "steps": steps,

@@ -1,11 +1,4 @@
-"""Agent orchestration: the plan-execute loop.
-
-The loop repeatedly asks the model what to do, executes any tools it requests
-(gating approval-required tools through a callback), feeds the results back, and
-continues until the model answers without calling a tool or the step limit is
-reached. It is transport-agnostic: callers provide ``emit`` (to surface steps to
-the UI) and ``request_approval`` (to confirm sensitive actions).
-"""
+"""Agent orchestration: the plan-execute tool loop, gated by an approval callback."""
 
 from __future__ import annotations
 
@@ -111,9 +104,7 @@ class AgentService:
                         continue
 
                 output = await self._tools.run(call.name, call.arguments)
-                await emit(
-                    {"type": "tool_result", "tool": call.name, "output": output}
-                )
+                await emit({"type": "tool_result", "tool": call.name, "output": output})
                 messages.append(
                     ChatMessage(
                         role="tool",

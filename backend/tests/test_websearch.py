@@ -15,12 +15,12 @@ from collections.abc import AsyncIterator  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 import app.main as main  # noqa: E402
+from app.config import get_settings  # noqa: E402
 from app.main import app  # noqa: E402
 from app.providers import build_default_registry  # noqa: E402
-from app.providers.base import ChatMessage, LLMProvider, ProviderModel  # noqa: E402
+from app.providers.base import LLMProvider, ProviderModel  # noqa: E402
 from app.rag.embeddings import EmbeddingProvider  # noqa: E402
 from app.web.search import SearchResult, _decode_ddg_href  # noqa: E402
-from app.config import get_settings  # noqa: E402
 
 
 def test_ddg_href_decode() -> None:

@@ -30,8 +30,7 @@ export function MessageList({
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const nearBottom =
-      el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
     if (nearBottom) endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming]);
 

@@ -24,11 +24,11 @@ from collections.abc import AsyncIterator  # noqa: E402
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from app.config import get_settings  # noqa: E402
 from app.main import app  # noqa: E402
 from app.providers import build_default_registry  # noqa: E402
 from app.providers.base import ChatMessage, LLMProvider, ProviderModel  # noqa: E402
 from app.rag.embeddings import EmbeddingProvider  # noqa: E402
-from app.config import get_settings  # noqa: E402
 
 _DIM = 64
 
@@ -114,9 +114,7 @@ def test_rag_flow() -> None:
         tokens: list[str] = []
         sources = None
         with client.websocket_connect(f"/ws/chat/{conv['id']}") as ws:
-            ws.send_json(
-                {"content": "Tell me about photosynthesis", "use_rag": True}
-            )
+            ws.send_json({"content": "Tell me about photosynthesis", "use_rag": True})
             while True:
                 event = ws.receive_json()
                 if event["type"] == "sources":
@@ -161,7 +159,9 @@ def test_document_scoping() -> None:
         conv_b = client.post("/api/conversations", json={}).json()["id"]
 
         # Upload a document scoped to conversation A only.
-        files = {"file": ("scoped.txt", "Photosynthesis converts sunlight.", "text/plain")}
+        files = {
+            "file": ("scoped.txt", "Photosynthesis converts sunlight.", "text/plain")
+        }
         doc = client.post(
             "/api/documents", files=files, data={"conversation_id": conv_a}
         ).json()

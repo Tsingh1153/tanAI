@@ -1,17 +1,7 @@
 """Computer-use tools: control the real desktop (mouse, keyboard, screenshots).
 
-This is the most sensitive capability in the app, so it is designed to fail
-closed:
-
-* It is only registered when ``computer_use_enabled`` is set.
-* Every action is an approval-required tool (gated by the agent loop).
-* The heavy OS-automation dependency (``pyautogui``) is imported lazily, so the
-  core app installs and runs without it. If it is missing or there is no display
-  (e.g. a headless server), each tool returns a clear error instead of crashing.
-
-Vision note: these tools let the model *act*, but interpreting a screenshot to
-decide where to click requires a vision-capable model. The screenshot tool saves
-a PNG and reports its size; feeding it to a multimodal model is a follow-up.
+Fails closed: registered only when computer_use_enabled, every action is
+approval-gated, and pyautogui is imported lazily so a headless install still runs.
 """
 
 from __future__ import annotations

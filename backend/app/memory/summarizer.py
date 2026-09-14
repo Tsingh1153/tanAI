@@ -1,11 +1,4 @@
-"""Rolling conversation summarization (context compression).
-
-When the not-yet-summarized tail of a conversation exceeds the token budget, the
-oldest overflowing turns are folded into a running summary via the model itself.
-The summary is prepended to future prompts in place of those raw turns, so a
-conversation can continue indefinitely without exceeding the context window while
-still "remembering" what came before.
-"""
+"""Rolling summarization: fold overflowing old turns into a running summary."""
 
 from __future__ import annotations
 

@@ -1,11 +1,4 @@
-"""Best-effort local hardware detection.
-
-Used purely for display and to inform sensible defaults. We avoid importing
-heavy ML libraries just to detect a device: platform introspection plus a couple
-of cheap CLI probes cover the common cases (Apple Silicon / NVIDIA / AMD / CPU).
-The actual accelerator use is handled by the model backend (e.g. Ollama picks up
-Metal/CUDA automatically).
-"""
+"""Best-effort hardware detection for display, via platform introspection + CLI probes."""
 
 from __future__ import annotations
 
@@ -29,9 +22,7 @@ def _has(command: str) -> bool:
 
 def _probe(command: list[str]) -> str | None:
     try:
-        out = subprocess.run(
-            command, capture_output=True, text=True, timeout=2
-        )
+        out = subprocess.run(command, capture_output=True, text=True, timeout=2)
         if out.returncode == 0:
             return out.stdout.strip()
     except (OSError, subprocess.SubprocessError):
@@ -66,9 +57,7 @@ def detect_hardware() -> HardwareInfo:
 
     # AMD ROCm.
     if _has("rocminfo") or _has("rocm-smi"):
-        return HardwareInfo(
-            device="rocm", label="AMD ROCm", details="ROCm-capable GPU"
-        )
+        return HardwareInfo(device="rocm", label="AMD ROCm", details="ROCm-capable GPU")
 
     # CPU fallback.
     return HardwareInfo(

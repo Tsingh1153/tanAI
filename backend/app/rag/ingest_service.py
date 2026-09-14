@@ -1,10 +1,4 @@
-"""Document ingestion orchestration.
-
-Given a persisted ``Document`` row and the file on disk, this parses the file,
-chunks it, embeds every chunk (in batches, to bound request size and memory),
-and stores the vectors. Success/failure is recorded on the document's ``status``
-so the UI can show indexing progress and surface errors.
-"""
+"""Document ingestion: parse -> chunk -> embed (batched) -> store, tracking status."""
 
 from __future__ import annotations
 

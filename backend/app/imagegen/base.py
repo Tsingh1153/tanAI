@@ -14,9 +14,7 @@ class ImageGenerator(ABC):
     name: str = "base"
 
     @abstractmethod
-    async def generate(
-        self, prompt: str, size: int, steps: int, n: int
-    ) -> list[bytes]:
+    async def generate(self, prompt: str, size: int, steps: int, n: int) -> list[bytes]:
         """Return ``n`` generated images as raw PNG bytes."""
 
     @abstractmethod

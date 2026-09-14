@@ -1,9 +1,4 @@
-"""SQLAlchemy ORM models.
-
-The schema is intentionally small for the vertical slice: conversations own an
-ordered list of messages. UUID string primary keys keep IDs opaque and safe to
-expose to the frontend, and timezone-aware timestamps make ordering unambiguous.
-"""
+"""SQLAlchemy ORM models. UUID string PKs, timezone-aware timestamps."""
 
 from __future__ import annotations
 
@@ -50,9 +45,7 @@ class Conversation(Base):
     # live window, plus how many leading messages it represents.
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     summarized_count: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_now
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now, onupdate=_now
     )
@@ -71,9 +64,7 @@ class Folder(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_now
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class Message(Base):
@@ -90,13 +81,9 @@ class Message(Base):
     model: Mapped[str | None] = mapped_column(String(128), nullable=True)
     # JSON list of stored image filenames attached to this turn (vision input).
     images_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_now
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
-    conversation: Mapped["Conversation"] = relationship(
-        back_populates="messages"
-    )
+    conversation: Mapped["Conversation"] = relationship(back_populates="messages")
 
     @property
     def images(self) -> list[str]:
@@ -130,9 +117,7 @@ class Document(Base):
     # "indexing" | "ready" | "error"
     status: Mapped[str] = mapped_column(String(16), default="indexing")
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_now
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     chunks: Mapped[list["Chunk"]] = relationship(
         back_populates="document",
@@ -141,12 +126,7 @@ class Document(Base):
 
 
 class Chunk(Base):
-    """A retrievable slice of a document plus its embedding vector.
-
-    The embedding is stored as a packed float32 binary blob (``LargeBinary``)
-    which is compact and fast to load into NumPy for similarity search. The
-    dimensionality is recorded so vectors can be unpacked without guessing.
-    """
+    """A retrievable slice of a document plus its embedding (packed float32 blob)."""
 
     __tablename__ = "chunks"
 
@@ -165,12 +145,7 @@ class Chunk(Base):
 
 
 class Memory(Base):
-    """A durable fact or preference remembered across conversations.
-
-    Memories are embedded (for semantic recall), scored by ``importance``, and
-    optionally expire. ``pinned`` memories and ``kind == "profile"`` entries are
-    always eligible for retrieval regardless of similarity.
-    """
+    """A durable fact or preference remembered across conversations."""
 
     __tablename__ = "memories"
 
@@ -186,9 +161,7 @@ class Memory(Base):
     )
     embedding: Mapped[bytes] = mapped_column(LargeBinary)
     dim: Mapped[int] = mapped_column(Integer)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_now
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     last_used_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -198,11 +171,7 @@ class Memory(Base):
 
 
 class ProviderConfig(Base):
-    """A user-registered model backend (OpenAI-compatible endpoint).
-
-    Persisted so runtime-added providers survive restarts. The built-in Ollama
-    provider is not stored here — it is always present.
-    """
+    """A user-registered OpenAI-compatible backend, persisted to survive restarts."""
 
     __tablename__ = "providers"
 
@@ -212,9 +181,7 @@ class ProviderConfig(Base):
     kind: Mapped[str] = mapped_column(String(32), default="openai")
     base_url: Mapped[str] = mapped_column(String(1024))
     api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_now
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class MCPServer(Base):
@@ -227,7 +194,4 @@ class MCPServer(Base):
     command: Mapped[str] = mapped_column(String(512))
     args_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     env_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_now
-    )
-
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

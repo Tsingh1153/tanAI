@@ -1,8 +1,7 @@
 "use client";
 
-// Renders assistant/user markdown with GitHub-flavored markdown, syntax
-// highlighting, and LaTeX (KaTeX). Isolated in its own component so the heavy
-// remark/rehype pipeline is only imported where needed.
+// Markdown rendering (GFM + syntax highlighting + KaTeX), isolated to contain the
+// heavy remark/rehype pipeline.
 
 import { memo } from "react";
 import ReactMarkdown from "react-markdown";
@@ -60,7 +59,11 @@ function MarkdownImpl({ content }: { content: string }) {
           // Renderable blocks manage their own container, so skip the <pre>.
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           pre: ({ children }: any) =>
-            hasRenderableChild(children) ? <>{children}</> : <pre>{children}</pre>,
+            hasRenderableChild(children) ? (
+              <>{children}</>
+            ) : (
+              <pre>{children}</pre>
+            ),
         }}
       >
         {content}

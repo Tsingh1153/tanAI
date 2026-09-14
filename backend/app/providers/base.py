@@ -1,10 +1,4 @@
-"""Provider interface and shared value objects.
-
-Design decision: a narrow abstract base class defines the *only* three things
-the rest of the app needs from a model backend — list models, stream a chat
-completion, and report health. Keeping the surface this small is what makes the
-providers genuinely interchangeable and hot-swappable at runtime.
-"""
+"""Provider interface and shared value objects — the seam every model backend implements."""
 
 from __future__ import annotations
 
@@ -24,12 +18,7 @@ class ToolCall:
 
 @dataclass(slots=True)
 class ChatMessage:
-    """A provider-agnostic chat message.
-
-    Beyond plain user/assistant/system turns, a message may carry ``tool_calls``
-    (an assistant asking to run tools) or be a ``tool`` result (``tool_name`` /
-    ``tool_call_id`` set). These extra fields are ignored by non-agent paths.
-    """
+    """A provider-agnostic chat message; tool_* fields are ignored off the agent path."""
 
     role: str
     content: str
@@ -85,15 +74,8 @@ class LLMProvider(ABC):
     async def health(self) -> bool:
         """Return ``True`` if the backend is reachable."""
 
-    async def complete(
-        self, model: str, messages: list["ChatMessage"]
-    ) -> str:
-        """Non-streaming convenience: collect a full completion as one string.
-
-        Used for internal, non-user-facing calls (summarization, memory
-        extraction). Defaults to draining ``stream_chat`` so every provider gets
-        it for free.
-        """
+    async def complete(self, model: str, messages: list["ChatMessage"]) -> str:
+        """Collect a full completion as one string (drains stream_chat)."""
 
         parts: list[str] = []
         async for token in self.stream_chat(model, messages):
@@ -106,12 +88,7 @@ class LLMProvider(ABC):
         messages: list["ChatMessage"],
         tools: list[dict] | None = None,
     ) -> "ChatResult":
-        """Non-streaming completion with optional tool calling.
-
-        The default implementation ignores ``tools`` and returns plain text, so
-        providers/models without tool support degrade gracefully (they simply
-        never request a tool). Providers that support tools override this.
-        """
+        """Non-streaming completion with optional tools; default ignores tools."""
 
         content = await self.complete(model, messages)
         return ChatResult(content=content, tool_calls=[])

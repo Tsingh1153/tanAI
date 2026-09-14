@@ -1,12 +1,6 @@
-"""OpenAI-compatible provider.
+"""OpenAI-compatible provider (LM Studio, vLLM, llama.cpp server, cloud APIs).
 
-A single implementation of the OpenAI Chat Completions protocol unlocks a wide
-range of backends that all speak it: LM Studio, vLLM, llama.cpp's server, and
-hosted APIs (OpenAI, Groq, OpenRouter, Together, ...). The only differences are
-the base URL and whether an API key is required, so both are constructor args.
-
-``base_url`` should include the version path, e.g. ``http://localhost:1234/v1``
-for LM Studio or ``https://api.openai.com/v1`` for OpenAI.
+base_url must include the version path, e.g. http://localhost:1234/v1.
 """
 
 from __future__ import annotations
@@ -55,11 +49,7 @@ class OpenAICompatibleProvider(LLMProvider):
         resp = await self._client.get("/models")
         resp.raise_for_status()
         data = resp.json().get("data", [])
-        return [
-            ProviderModel(name=item["id"])
-            for item in data
-            if item.get("id")
-        ]
+        return [ProviderModel(name=item["id"]) for item in data if item.get("id")]
 
     async def stream_chat(
         self, model: str, messages: list[ChatMessage]
@@ -69,12 +59,9 @@ class OpenAICompatibleProvider(LLMProvider):
             "messages": [self._serialize(m) for m in messages],
             "stream": True,
         }
-        async with self._client.stream(
-            "POST", "/chat/completions", json=body
-        ) as resp:
+        async with self._client.stream("POST", "/chat/completions", json=body) as resp:
             resp.raise_for_status()
-            # Server-Sent Events: each token arrives as ``data: {json}`` lines,
-            # terminated by ``data: [DONE]``.
+            # SSE: "data: {json}" lines, terminated by "data: [DONE]".
             async for line in resp.aiter_lines():
                 line = line.strip()
                 if not line or not line.startswith("data:"):

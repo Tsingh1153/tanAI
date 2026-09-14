@@ -129,7 +129,8 @@ export function DocumentsPanel({
             onDrop={(e) => {
               e.preventDefault();
               setDragOver(false);
-              if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
+              if (e.dataTransfer.files.length)
+                uploadFiles(e.dataTransfer.files);
             }}
             onClick={() => inputRef.current?.click()}
             className={clsx(
@@ -148,8 +149,8 @@ export function DocumentsPanel({
               {uploading ? "Indexing…" : "Drop files or click to upload"}
             </p>
             <p className="text-xs text-muted">
-              Added to <span className="font-medium">this chat</span> · PDF, Word,
-              Excel, CSV, Markdown, HTML, code
+              Added to <span className="font-medium">this chat</span> · PDF,
+              Word, Excel, CSV, Markdown, HTML, code
             </p>
           </div>
           <input

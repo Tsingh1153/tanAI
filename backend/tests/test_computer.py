@@ -26,9 +26,7 @@ _COMPUTER_TOOLS = {
 
 
 def _ctx() -> ToolContext:
-    return ToolContext(
-        workspace=Path(tempfile.mkdtemp()), timeout=5, output_limit=2000
-    )
+    return ToolContext(workspace=Path(tempfile.mkdtemp()), timeout=5, output_limit=2000)
 
 
 def test_disabled_by_default() -> None:

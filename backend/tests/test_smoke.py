@@ -12,6 +12,7 @@ import os
 # Use an isolated temp DB for tests before app imports. Honors an externally
 # provided URL (CI may point this at a tmpfs); defaults to the system temp dir.
 import tempfile  # noqa: E402
+
 os.environ.setdefault(
     "LOCALMIND_DATABASE_URL",
     f"sqlite+aiosqlite:///{tempfile.gettempdir()}/localmind_test.db",
@@ -21,10 +22,10 @@ from collections.abc import AsyncIterator  # noqa: E402
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from app.config import get_settings  # noqa: E402
 from app.main import app  # noqa: E402
 from app.providers import build_default_registry  # noqa: E402
 from app.providers.base import ChatMessage, LLMProvider, ProviderModel  # noqa: E402
-from app.config import get_settings  # noqa: E402
 
 
 class FakeProvider(LLMProvider):

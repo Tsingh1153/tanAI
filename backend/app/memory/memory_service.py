@@ -1,11 +1,4 @@
-"""Long-term memory: storage, retrieval, injection, and extraction.
-
-Memories are short natural-language statements about the user ("prefers Python",
-"works at Acme") embedded for semantic recall. At query time the most relevant
-memories — plus all pinned/profile ones — are injected into the prompt. After
-each exchange, an extraction pass asks the model to surface any new durable facts,
-which are de-duplicated against existing memories before being stored.
-"""
+"""Long-term memory: storage, semantic retrieval, prompt injection, and extraction."""
 
 from __future__ import annotations
 
@@ -124,9 +117,9 @@ class MemoryService:
     ) -> list[Memory]:
         """Capture durable new facts from an exchange; return created memories."""
 
-        raw = await provider.complete(model, self._extract_messages(
-            user_content, assistant_content
-        ))
+        raw = await provider.complete(
+            model, self._extract_messages(user_content, assistant_content)
+        )
         candidates = _parse_memory_json(raw)
         if not candidates:
             return []
@@ -176,9 +169,7 @@ class MemoryService:
             )
         return None
 
-    def _is_duplicate(
-        self, vector: np.ndarray, matrix: np.ndarray | None
-    ) -> bool:
+    def _is_duplicate(self, vector: np.ndarray, matrix: np.ndarray | None) -> bool:
         if matrix is None or matrix.size == 0:
             return False
         v = vector / (np.linalg.norm(vector) + 1e-9)

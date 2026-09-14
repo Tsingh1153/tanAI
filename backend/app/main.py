@@ -1,13 +1,4 @@
-"""FastAPI application: REST endpoints + WebSocket streaming chat.
-
-Wiring strategy:
-- A lifespan handler initializes the database and builds the provider registry
-  once, stashing the registry on ``app.state`` for reuse across requests.
-- Dependency-injection functions build repositories/services per request from a
-  scoped DB session, keeping handlers thin and testable.
-- Streaming uses a WebSocket so the frontend receives tokens the instant the
-  model emits them; a non-streaming REST fallback is also provided.
-"""
+"""FastAPI application: REST endpoints + WebSocket streaming chat."""
 
 from __future__ import annotations
 
@@ -81,13 +72,13 @@ from .schemas import (
     FolderOut,
     FolderUpdate,
     HealthOut,
+    ImageGenRequest,
+    MCPServerCreate,
+    MCPServerOut,
     MemoryCreate,
     MemoryOut,
     MemoryUpdate,
     MessageOut,
-    ImageGenRequest,
-    MCPServerCreate,
-    MCPServerOut,
     ModelInfo,
     PluginInfo,
     ProviderCreate,
@@ -257,11 +248,7 @@ async def health(
 async def list_models(
     registry: ProviderRegistry = Depends(get_registry),
 ) -> list[ModelInfo]:
-    """Aggregate available models across every registered provider.
-
-    A single provider being offline never fails the whole call — its models are
-    simply omitted, so the UI still shows models from providers that are up.
-    """
+    """Aggregate models across providers; an offline provider is skipped, not fatal."""
 
     models: list[ModelInfo] = []
     for provider in registry.all():
@@ -362,7 +349,10 @@ async def add_provider(
         )
 
     provider = make_openai_provider(
-        name, payload.base_url, payload.api_key, payload.label,
+        name,
+        payload.base_url,
+        payload.api_key,
+        payload.label,
         settings.request_timeout,
     )
     # Verify reachability before committing so bad endpoints fail fast.
@@ -395,9 +385,7 @@ async def add_provider(
     )
 
 
-@app.delete(
-    "/api/providers/{name}", status_code=204, response_class=Response
-)
+@app.delete("/api/providers/{name}", status_code=204, response_class=Response)
 async def remove_provider(
     name: str,
     registry: ProviderRegistry = Depends(get_registry),
@@ -623,9 +611,7 @@ async def promote_document(
     return DocumentOut.model_validate(document)
 
 
-@app.delete(
-    "/api/documents/{document_id}", status_code=204, response_class=Response
-)
+@app.delete("/api/documents/{document_id}", status_code=204, response_class=Response)
 async def delete_document(
     document_id: str,
     session: AsyncSession = Depends(get_session),
@@ -650,9 +636,7 @@ async def search_documents(
     rag: RagService = Depends(get_rag_service),
 ) -> SearchResponse:
     try:
-        scored = await rag.search(
-            payload.query, payload.top_k, payload.document_ids
-        )
+        scored = await rag.search(payload.query, payload.top_k, payload.document_ids)
     except Exception as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     return SearchResponse(results=RagService._to_sources(scored))
@@ -793,9 +777,7 @@ def _load_whisper():
                 "pip install -r requirements-voice.txt"
             ),
         ) from exc
-    model = WhisperModel(
-        settings.voice_stt_model, device="cpu", compute_type="int8"
-    )
+    model = WhisperModel(settings.voice_stt_model, device="cpu", compute_type="int8")
     app.state.whisper = model
     return model
 
@@ -815,6 +797,7 @@ async def transcribe(file: UploadFile = File(...)) -> dict:
         path = tmp.name
 
     try:
+
         def work() -> tuple[str, str]:
             segments, info = model.transcribe(path, beam_size=1)
             text = " ".join(seg.text for seg in segments).strip()
@@ -966,15 +949,11 @@ async def update_memory(
     existing = await MemoryRepository(session).get(memory_id)
     if existing is None:
         raise HTTPException(status_code=404, detail="Memory not found")
-    updated = await memory.update(
-        existing, payload.model_dump(exclude_unset=True)
-    )
+    updated = await memory.update(existing, payload.model_dump(exclude_unset=True))
     return MemoryOut.model_validate(updated)
 
 
-@app.delete(
-    "/api/memories/{memory_id}", status_code=204, response_class=Response
-)
+@app.delete("/api/memories/{memory_id}", status_code=204, response_class=Response)
 async def delete_memory(
     memory_id: str,
     session: AsyncSession = Depends(get_session),
@@ -1012,7 +991,9 @@ async def chat_once(
     except ConversationNotFound as exc:
         raise HTTPException(status_code=404, detail="Conversation not found") from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Generation failed: {exc}") from exc
+        raise HTTPException(
+            status_code=502, detail=f"Generation failed: {exc}"
+        ) from exc
 
     return MessageOut(
         id="",
@@ -1064,7 +1045,9 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
             images = message.get("images") or None
             regenerate = bool(message.get("regenerate"))
             use_web = bool(message.get("use_web")) and settings.web_search_enabled
-            use_memory = bool(message.get("use_memory", True)) and settings.memory_enabled
+            use_memory = (
+                bool(message.get("use_memory", True)) and settings.memory_enabled
+            )
             use_agent = bool(message.get("agent")) and settings.agent_enabled
 
             if use_agent:
@@ -1128,9 +1111,7 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                             {"type": "web_sources", "data": web_sources}
                         )
                     except Exception:
-                        await websocket.send_json(
-                            {"type": "web_sources", "data": []}
-                        )
+                        await websocket.send_json({"type": "web_sources", "data": []})
 
                 # Optional RAG retrieval, scoped to this chat's documents plus
                 # the global memory set. Explicit document_ids from the client
@@ -1157,9 +1138,7 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                             )
                         else:
                             # No documents in scope for this chat.
-                            await websocket.send_json(
-                                {"type": "sources", "data": []}
-                            )
+                            await websocket.send_json({"type": "sources", "data": []})
                     except Exception as exc:
                         await websocket.send_json(
                             {
@@ -1181,9 +1160,7 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                         persist_user=not regenerate,
                     ):
                         parts.append(token)
-                        await websocket.send_json(
-                            {"type": "token", "data": token}
-                        )
+                        await websocket.send_json({"type": "token", "data": token})
                     await websocket.send_json({"type": "done"})
                 except ConversationNotFound:
                     await websocket.send_json(
@@ -1233,9 +1210,7 @@ async def _web_context(query: str) -> tuple[str | None, list[dict]]:
         "current, accurate information and cite sources by number like [1].\n\n"
         + "\n\n".join(blocks)
     )
-    sources = [
-        {"title": r.title, "url": r.url, "snippet": r.snippet} for r in results
-    ]
+    sources = [{"title": r.title, "url": r.url, "snippet": r.snippet} for r in results]
     return prime, sources
 
 
@@ -1250,9 +1225,7 @@ def _web_search_tool_spec() -> ToolSpec:
             return f"Error: {exc}"
         if not results:
             return "No results found."
-        return "\n\n".join(
-            f"{r.title}\n{r.url}\n{r.snippet}" for r in results
-        )
+        return "\n\n".join(f"{r.title}\n{r.url}\n{r.snippet}" for r in results)
 
     return ToolSpec(
         name="web_search",
@@ -1310,18 +1283,14 @@ async def _run_agent_turn(
 
         await messages_repo.add(conversation_id, "user", content)
         history_rows = await messages_repo.list_for_conversation(conversation_id)
-        history = [
-            ChatMessage(role=m.role, content=m.content) for m in history_rows
-        ]
+        history = [ChatMessage(role=m.role, content=m.content) for m in history_rows]
 
         # Optional long-term memory prime.
         primes: list[str] = []
         if use_memory:
             try:
                 mem = MemoryService(MemoryRepository(session), embeddings, settings)
-                mem_prime, used = await mem.build_prompt(
-                    content, settings.memory_top_k
-                )
+                mem_prime, used = await mem.build_prompt(content, settings.memory_top_k)
                 if mem_prime:
                     primes.append(mem_prime)
                 if used:
@@ -1344,9 +1313,7 @@ async def _run_agent_turn(
             f"Python tool operate under this root path: {_agent_root()}. "
             f"Use absolute paths within it when reading or writing files."
         )
-        agent = AgentService(
-            provider, chosen_model, tools, settings.agent_max_steps
-        )
+        agent = AgentService(provider, chosen_model, tools, settings.agent_max_steps)
 
         await websocket.send_json({"type": "start"})
 
@@ -1376,9 +1343,7 @@ async def _run_agent_turn(
             return
 
         await websocket.send_json({"type": "token", "data": final})
-        await messages_repo.add(
-            conversation_id, "assistant", final, model=chosen_model
-        )
+        await messages_repo.add(conversation_id, "assistant", final, model=chosen_model)
         if conversation.title == "New chat":
             title = content.strip().splitlines()[0][:60] or "New chat"
             await conversations.update(conversation, title=title)
@@ -1410,9 +1375,7 @@ async def _extract_memories(
 
     try:
         async with SessionLocal() as session:
-            service = MemoryService(
-                MemoryRepository(session), embeddings, settings
-            )
+            service = MemoryService(MemoryRepository(session), embeddings, settings)
             await service.extract(
                 conversation_id,
                 user_content,

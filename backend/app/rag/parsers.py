@@ -1,10 +1,4 @@
-"""Document text extraction.
-
-Each supported format is reduced to a list of ``TextSegment``s — a piece of text
-plus an optional locator (page number, slide, sheet) used later for citations.
-Parsing is dispatched by file extension; unknown text-like files fall back to a
-plain UTF-8 read so code and config files "just work".
-"""
+"""Document text extraction: each format -> TextSegments (text + citation locator)."""
 
 from __future__ import annotations
 
@@ -26,18 +20,56 @@ class TextSegment:
 
 # Extensions treated as plain text (read directly). Covers code + config + prose.
 _TEXT_EXTENSIONS = {
-    ".txt", ".md", ".markdown", ".rst", ".log",
-    ".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".c", ".h", ".cpp", ".hpp",
-    ".cs", ".go", ".rs", ".rb", ".php", ".swift", ".kt", ".scala", ".sh",
-    ".sql", ".r", ".m", ".lua", ".pl",
-    ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".env", ".xml",
+    ".txt",
+    ".md",
+    ".markdown",
+    ".rst",
+    ".log",
+    ".py",
+    ".js",
+    ".ts",
+    ".tsx",
+    ".jsx",
+    ".java",
+    ".c",
+    ".h",
+    ".cpp",
+    ".hpp",
+    ".cs",
+    ".go",
+    ".rs",
+    ".rb",
+    ".php",
+    ".swift",
+    ".kt",
+    ".scala",
+    ".sh",
+    ".sql",
+    ".r",
+    ".m",
+    ".lua",
+    ".pl",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".ini",
+    ".cfg",
+    ".env",
+    ".xml",
 }
 
 
 def supported_extension(filename: str) -> bool:
     ext = Path(filename).suffix.lower()
     return ext in _TEXT_EXTENSIONS or ext in {
-        ".pdf", ".docx", ".pptx", ".xlsx", ".csv", ".html", ".htm",
+        ".pdf",
+        ".docx",
+        ".pptx",
+        ".xlsx",
+        ".csv",
+        ".html",
+        ".htm",
     }
 
 

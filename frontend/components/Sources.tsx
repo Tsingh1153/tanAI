@@ -17,7 +17,9 @@ export function Sources({ sources }: { sources: RetrievedSource[] }) {
       >
         <ChevronRight
           size={13}
-          className={open ? "rotate-90 transition-transform" : "transition-transform"}
+          className={
+            open ? "rotate-90 transition-transform" : "transition-transform"
+          }
         />
         {sources.length} source{sources.length > 1 ? "s" : ""}
       </button>
@@ -31,9 +33,7 @@ export function Sources({ sources }: { sources: RetrievedSource[] }) {
               <div className="mb-1 flex items-center gap-1.5 font-medium text-content">
                 <FileText size={12} className="text-muted" />
                 <span className="truncate">{s.filename}</span>
-                {s.locator && (
-                  <span className="text-muted">· {s.locator}</span>
-                )}
+                {s.locator && <span className="text-muted">· {s.locator}</span>}
                 <span className="ml-auto shrink-0 text-muted">
                   {(s.score * 100).toFixed(0)}%
                 </span>

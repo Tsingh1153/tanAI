@@ -72,7 +72,9 @@ def test_generate_endpoint() -> None:
         assert client.get(urls[0]).status_code == 200
 
         # Empty prompt is rejected.
-        assert client.post("/api/images/generate", json={"prompt": ""}).status_code == 400
+        assert (
+            client.post("/api/images/generate", json={"prompt": ""}).status_code == 400
+        )
 
     print("IMAGE ENDPOINT OK")
 

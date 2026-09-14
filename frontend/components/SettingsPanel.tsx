@@ -56,7 +56,14 @@ const PROVIDER_PRESETS = [
   },
 ];
 
-const VISION_HINTS = ["vision", "llava", "-vl", "moondream", "bakllava", "minicpm-v"];
+const VISION_HINTS = [
+  "vision",
+  "llava",
+  "-vl",
+  "moondream",
+  "bakllava",
+  "minicpm-v",
+];
 
 function isVision(name: string): boolean {
   const n = name.toLowerCase();
@@ -192,7 +199,12 @@ export function SettingsPanel({
       const es = new EventSource(api.pullModelUrl(name.trim()));
       esRef.current = es;
       es.onmessage = (e) => {
-        let d: { status?: string; error?: string; total?: number; completed?: number };
+        let d: {
+          status?: string;
+          error?: string;
+          total?: number;
+          completed?: number;
+        };
         try {
           d = JSON.parse(e.data);
         } catch {
@@ -552,7 +564,9 @@ export function SettingsPanel({
                       )}
                       title={s.connected ? "Connected" : "Disconnected"}
                     />
-                    <span className="truncate text-sm text-content">{s.name}</span>
+                    <span className="truncate text-sm text-content">
+                      {s.name}
+                    </span>
                     <span className="ml-auto shrink-0 text-xs text-muted">
                       {s.connected ? `${s.tools.length} tools` : "offline"}
                     </span>
@@ -565,7 +579,9 @@ export function SettingsPanel({
                     </button>
                   </div>
                   {s.error && (
-                    <p className="mt-1 truncate text-xs text-accent">{s.error}</p>
+                    <p className="mt-1 truncate text-xs text-accent">
+                      {s.error}
+                    </p>
                   )}
                 </li>
               ))}
@@ -642,14 +658,14 @@ export function SettingsPanel({
           </h3>
           <p className="text-xs leading-relaxed text-muted">
             The <span className="font-medium text-content">Image</span> button
-            needs an external backend. Point it at a local Stable Diffusion server
-            (AUTOMATIC1111 run with{" "}
-            <code className="rounded bg-elevated px-1">--api</code>, or SD.Next /
-            Forge) or an OpenAI-compatible images API, via env vars in{" "}
+            needs an external backend. Point it at a local Stable Diffusion
+            server (AUTOMATIC1111 run with{" "}
+            <code className="rounded bg-elevated px-1">--api</code>, or SD.Next
+            / Forge) or an OpenAI-compatible images API, via env vars in{" "}
             <code className="rounded bg-elevated px-1">backend/.env</code>:
           </p>
           <pre className="mt-2 overflow-x-auto rounded-lg border border-border bg-elevated p-2.5 text-[11px] text-muted">
-{`LOCALMIND_IMAGE_BACKEND=automatic1111
+            {`LOCALMIND_IMAGE_BACKEND=automatic1111
 LOCALMIND_IMAGE_SERVER_URL=http://localhost:7860
 
 # …or a hosted images API:

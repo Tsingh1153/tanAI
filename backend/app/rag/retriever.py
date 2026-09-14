@@ -1,18 +1,4 @@
-"""Hybrid retrieval over stored chunk embeddings.
-
-Two signals are combined:
-
-* **Semantic** — cosine similarity between the query embedding and each chunk
-  embedding. Captures meaning ("car" ~ "automobile").
-* **Lexical** — fraction of the query's distinct terms that appear in the chunk.
-  Anchors results to exact keywords (names, IDs, error codes) that embeddings
-  sometimes smear over.
-
-Each signal is min-max normalized across the candidate set and blended with
-weight ``alpha`` (default favors semantics). For a local single-user corpus a
-NumPy matrix multiply over all chunks is simplest and fast — no approximate
-index to build or keep consistent.
-"""
+"""Hybrid retrieval over chunk embeddings: semantic (cosine) blended with keyword."""
 
 from __future__ import annotations
 
@@ -82,10 +68,7 @@ def retrieve(
     q_terms = _tokens(query_text)
     if q_terms:
         lexical = np.array(
-            [
-                len(q_terms & _tokens(c.content)) / len(q_terms)
-                for c in chunks
-            ],
+            [len(q_terms & _tokens(c.content)) / len(q_terms) for c in chunks],
             dtype=np.float32,
         )
     else:

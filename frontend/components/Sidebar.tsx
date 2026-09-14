@@ -20,10 +20,7 @@ import { Logo } from "./Logo";
 import { api } from "@/lib/api";
 import type { Conversation, Folder } from "@/lib/types";
 
-// Left rail: brand, new chat, search, and the conversation list organized into
-// Pinned / Folders / recency buckets. Pin and folder membership are edited from a
-// per-chat "..." menu. Folder CRUD is handled here; conversation refreshes are
-// delegated to the parent via onRefresh.
+// Left rail: conversation list in Pinned / Folders / recency buckets, plus folder CRUD.
 export function Sidebar({
   conversations,
   activeId,
@@ -117,7 +114,8 @@ export function Sidebar({
 
   const removeFolder = useCallback(
     async (f: Folder) => {
-      if (!window.confirm(`Delete folder "${f.name}"? Its chats are kept.`)) return;
+      if (!window.confirm(`Delete folder "${f.name}"? Its chats are kept.`))
+        return;
       await api.deleteFolder(f.id);
       await refreshFolders();
       onRefresh();
@@ -190,7 +188,9 @@ export function Sidebar({
 
       <nav className="flex-1 overflow-y-auto px-2 pb-3">
         {empty && (
-          <p className="px-3 py-6 text-center text-sm text-muted">No chats yet.</p>
+          <p className="px-3 py-6 text-center text-sm text-muted">
+            No chats yet.
+          </p>
         )}
 
         {pinned.length > 0 && (
@@ -242,7 +242,9 @@ export function Sidebar({
         })}
 
         {ungrouped.length > 0 && (
-          <Section label={folders.length > 0 || pinned.length > 0 ? "Chats" : ""}>
+          <Section
+            label={folders.length > 0 || pinned.length > 0 ? "Chats" : ""}
+          >
             {ungrouped.map(row)}
           </Section>
         )}

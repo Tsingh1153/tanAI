@@ -1,12 +1,4 @@
-"""Chat orchestration.
-
-The service ties together persistence (repositories) and inference (provider):
-it records the user turn, compresses history when it grows too long, replays the
-(possibly summarized) conversation to the model, streams the assistant's tokens
-back to the caller, and persists the completed reply. It knows nothing about HTTP
-or WebSockets, so the same logic serves both transports and is trivial to
-unit-test with a fake provider.
-"""
+"""Chat orchestration: persist the turn, build the prompt, stream the reply."""
 
 from __future__ import annotations
 
@@ -21,11 +13,22 @@ from ..memory.tokens import estimate_tokens
 from ..providers import ChatMessage, ProviderRegistry
 from ..repositories import ConversationRepository, MessageRepository
 
-
 # Substrings that identify a vision-capable model by name.
 _VISION_HINTS = (
-    "vision", "llava", "-vl", "vl-", "qwen2-vl", "qwen2.5vl", "moondream",
-    "bakllava", "minicpm-v", "gemma3", "gpt-4o", "gpt-4.1", "claude", "gemini",
+    "vision",
+    "llava",
+    "-vl",
+    "vl-",
+    "qwen2-vl",
+    "qwen2.5vl",
+    "moondream",
+    "bakllava",
+    "minicpm-v",
+    "gemma3",
+    "gpt-4o",
+    "gpt-4.1",
+    "claude",
+    "gemini",
 )
 
 
@@ -130,13 +133,10 @@ class ChatService:
     ) -> AsyncIterator[str]:
         """Run one user->assistant turn, yielding assistant tokens.
 
-        Side effects: persists the user message before generation and the full
-        assistant message after; compresses old turns into the conversation
-        summary when the live window exceeds the token budget; auto-titles the
-        thread from the first user message.
-
-        ``system_primes`` are optional, non-persisted system messages (memory,
-        retrieved context) injected ahead of the transcript.
+        Persists the user turn before generation and the assistant turn after,
+        compresses old turns into the summary past the token budget, and
+        auto-titles from the first message. system_primes are non-persisted
+        system messages (memory, retrieved context) prepended to the transcript.
         """
 
         conversation = await self._conversations.get(conversation_id)
@@ -146,9 +146,8 @@ class ChatService:
         chosen_model = model or conversation.model
         provider = self._registry.get(provider_name)
 
-        # Persist the user's turn first so history is correct even if the model
-        # call fails midway. Images are saved to disk for redisplay. Regenerate
-        # reuses the existing last user turn, so it skips this.
+        # Persist first so history survives a mid-generation failure; regenerate
+        # reuses the last user turn and skips this.
         if persist_user:
             image_files = self._save_images(images) if images else None
             await self._messages.add(
@@ -156,19 +155,16 @@ class ChatService:
             )
 
         history_rows = await self._messages.list_for_conversation(conversation_id)
-        history = [
-            ChatMessage(role=m.role, content=m.content) for m in history_rows
-        ]
+        history = [ChatMessage(role=m.role, content=m.content) for m in history_rows]
 
         # Vision handling for the current turn's images.
         primes: list[str] = list(system_primes or [])
         if images and history:
             if _looks_vision(chosen_model):
-                # The chosen model can see images directly.
                 history[-1].images = images
             else:
-                # Text-only model: route images through a vision model to get a
-                # description, then let the strong text model reason over it.
+                # Text-only model: describe images via a vision model, then let
+                # the strong text model reason over the description.
                 vision_prime = await self._vision_assist(
                     provider, chosen_model, images, user_content
                 )

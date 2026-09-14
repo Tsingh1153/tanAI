@@ -1,10 +1,4 @@
-"""Centralized application configuration.
-
-Settings are loaded from environment variables (prefixed ``LOCALMIND_``) and an
-optional ``.env`` file. ``get_settings`` is cached so the configuration is parsed
-once and shared across the process, which keeps the app cheap to wire up via
-dependency injection.
-"""
+"""Application settings, loaded from env vars (LOCALMIND_ prefix) and .env."""
 
 from __future__ import annotations
 
@@ -14,11 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Strongly-typed application settings.
-
-    Every field has a sensible local-first default so the application runs with
-    zero configuration against a standard Ollama install.
-    """
+    """Typed settings; every field defaults to run zero-config against Ollama."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -136,6 +126,4 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Return the process-wide settings singleton."""
-
     return Settings()

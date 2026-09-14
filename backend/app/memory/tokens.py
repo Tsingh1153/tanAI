@@ -1,10 +1,4 @@
-"""Lightweight token estimation.
-
-Exact token counts depend on the model's tokenizer, which we don't want to load
-just to make budgeting decisions. A ~4-characters-per-token heuristic is a well
-established, conservative approximation for English text and code, and it is
-plenty accurate for deciding when to compress history.
-"""
+"""Token estimation via a ~4-chars-per-token heuristic — enough for budgeting."""
 
 from __future__ import annotations
 

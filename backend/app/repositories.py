@@ -1,9 +1,4 @@
-"""Repository layer.
-
-The repository pattern isolates all persistence queries behind small, testable
-classes. Services depend on these — never on the ORM session directly — so query
-logic lives in one place and can be swapped or mocked wholesale.
-"""
+"""Database access — all queries live behind these repository classes."""
 
 from __future__ import annotations
 
@@ -51,7 +46,9 @@ class ConversationRepository:
         await self._session.refresh(conversation)
         return conversation
 
-    async def update(self, conversation: Conversation, **fields: object) -> Conversation:
+    async def update(
+        self, conversation: Conversation, **fields: object
+    ) -> Conversation:
         for key, value in fields.items():
             if value is not None:
                 setattr(conversation, key, value)
@@ -90,9 +87,7 @@ class FolderRepository:
         self._session = session
 
     async def list(self) -> list[Folder]:
-        result = await self._session.execute(
-            select(Folder).order_by(Folder.created_at)
-        )
+        result = await self._session.execute(select(Folder).order_by(Folder.created_at))
         return list(result.scalars().all())
 
     async def get(self, folder_id: str) -> Folder | None:
@@ -152,17 +147,13 @@ class MessageRepository:
         return list(result.scalars().all())
 
     async def delete_from(self, conversation_id: str, message_id: str) -> int:
-        """Delete a message and every message after it in the conversation.
+        """Delete a message and everything after it (edit/regenerate).
 
-        Used by edit ("resend from here") and regenerate ("drop the last reply").
-        Deletion is by position in the ordered list to be robust against equal
-        timestamps.
+        Deletes by list position, not timestamp, to survive equal timestamps.
         """
 
         messages = await self.list_for_conversation(conversation_id)
-        index = next(
-            (i for i, m in enumerate(messages) if m.id == message_id), None
-        )
+        index = next((i for i, m in enumerate(messages) if m.id == message_id), None)
         if index is None:
             return 0
         for message in messages[index:]:
@@ -274,11 +265,7 @@ class ChunkRepository:
     async def all_with_documents(
         self, document_ids: list[str] | None = None
     ) -> list[Chunk]:
-        """Load chunks (with their parent document) for similarity search.
-
-        A metadata filter on ``document_ids`` narrows the candidate set before
-        vectors are ever loaded into memory.
-        """
+        """Load chunks with their document; document_ids narrows before vectors load."""
 
         stmt = select(Chunk).options(selectinload(Chunk.document))
         if document_ids:

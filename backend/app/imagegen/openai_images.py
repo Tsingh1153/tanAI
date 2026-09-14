@@ -1,8 +1,4 @@
-"""OpenAI-compatible images backend (/v1/images/generations).
-
-Works with OpenAI (DALL·E) and any server implementing the same images API. We
-request base64 output so images never need a second fetch.
-"""
+"""OpenAI-compatible images backend (/v1/images/generations), base64 output."""
 
 from __future__ import annotations
 
@@ -39,9 +35,7 @@ class OpenAIImagesGenerator(ImageGenerator):
         except httpx.HTTPError:
             return False
 
-    async def generate(
-        self, prompt: str, size: int, steps: int, n: int
-    ) -> list[bytes]:
+    async def generate(self, prompt: str, size: int, steps: int, n: int) -> list[bytes]:
         body = {
             "model": self._model,
             "prompt": prompt,
@@ -58,7 +52,9 @@ class OpenAIImagesGenerator(ImageGenerator):
         data = resp.json().get("data", [])
         if not data:
             raise ImageGenError("The image API returned no images.")
-        return [base64.b64decode(item["b64_json"]) for item in data if item.get("b64_json")]
+        return [
+            base64.b64decode(item["b64_json"]) for item in data if item.get("b64_json")
+        ]
 
     async def aclose(self) -> None:
         await self._client.aclose()

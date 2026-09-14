@@ -17,6 +17,4 @@ def build_image_generator(settings: Settings) -> ImageGenerator:
             timeout=settings.request_timeout,
         )
     # Default: AUTOMATIC1111-compatible local Stable Diffusion server.
-    return Automatic1111Generator(
-        settings.image_server_url, settings.request_timeout
-    )
+    return Automatic1111Generator(settings.image_server_url, settings.request_timeout)

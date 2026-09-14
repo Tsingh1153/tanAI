@@ -76,9 +76,12 @@ export function WebcamPanel({
   // Live loop: capture every intervalSec, but only when idle.
   useEffect(() => {
     if (!open || !live) return;
-    const id = setInterval(() => {
-      if (!streaming) snap();
-    }, Math.max(2, intervalSec) * 1000);
+    const id = setInterval(
+      () => {
+        if (!streaming) snap();
+      },
+      Math.max(2, intervalSec) * 1000,
+    );
     return () => clearInterval(id);
   }, [open, live, intervalSec, streaming, snap]);
 

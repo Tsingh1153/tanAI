@@ -1,14 +1,6 @@
-"""Python plugin loader.
-
-A plugin is any ``.py`` file in the plugins directory that defines a top-level
-``register(registry)`` function. It receives the live :class:`ToolRegistry` and
-can add one or more tools via ``registry.register(ToolSpec(...))``. Plugins are
-loaded fresh each time tools are built, so dropping in a new file takes effect on
-the next agent turn (simple hot-loading) without a restart.
-
-Plugins execute in-process with full trust — they are ordinary Python. Only add
-plugins you trust; per-tool ``requires_approval`` still gates sensitive actions.
-"""
+"""Python plugin loader: import each .py in the plugins dir and call its
+register(registry). Loaded fresh per tool build, so new files hot-load. Plugins
+run in-process with full trust — only add ones you trust."""
 
 from __future__ import annotations
 

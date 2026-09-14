@@ -1,11 +1,4 @@
-"""Query-time retrieval and prompt grounding.
-
-Turns a user question into (1) a system prompt containing the most relevant
-retrieved passages and instructions to answer from them with citations, and
-(2) a list of sources for the UI. Keeping prompt construction here means the
-chat layer stays oblivious to RAG mechanics — it just receives an optional
-system prime.
-"""
+"""Query-time retrieval and prompt grounding: build a system prime + UI sources."""
 
 from __future__ import annotations
 
@@ -18,9 +11,7 @@ _SNIPPET_CHARS = 240
 
 
 class RagService:
-    def __init__(
-        self, chunks: ChunkRepository, embeddings: EmbeddingProvider
-    ) -> None:
+    def __init__(self, chunks: ChunkRepository, embeddings: EmbeddingProvider) -> None:
         self._chunks = chunks
         self._embeddings = embeddings
 

@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.config import get_settings  # noqa: E402
 from app.main import app  # noqa: E402
 from app.providers import build_default_registry  # noqa: E402
-from app.providers.base import ChatMessage, LLMProvider, ProviderModel  # noqa: E402
+from app.providers.base import LLMProvider, ProviderModel  # noqa: E402
 from app.rag.embeddings import EmbeddingProvider  # noqa: E402
 
 _PNG = (
@@ -77,8 +77,12 @@ def _chat(client, conv_id: str, model: str) -> str:
     tokens: list[str] = []
     with client.websocket_connect(f"/ws/chat/{conv_id}") as ws:
         ws.send_json(
-            {"content": "what is this?", "images": [_PNG], "model": model,
-             "use_memory": False}
+            {
+                "content": "what is this?",
+                "images": [_PNG],
+                "model": model,
+                "use_memory": False,
+            }
         )
         while True:
             ev = ws.receive_json()

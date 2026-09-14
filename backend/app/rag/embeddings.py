@@ -1,10 +1,4 @@
-"""Embedding provider abstraction.
-
-Embeddings turn text into vectors whose geometric closeness reflects semantic
-similarity. Like the LLM providers, embeddings sit behind a small interface so
-the backend (Ollama today; sentence-transformers, OpenAI, etc. later) can change
-without touching the ingestion or retrieval code.
-"""
+"""Embedding provider abstraction — swap the backend without touching RAG code."""
 
 from __future__ import annotations
 

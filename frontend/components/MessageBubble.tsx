@@ -25,9 +25,7 @@ function imageSrc(url: string): string {
   return url.startsWith("data:") ? url : `${API_BASE}${url}`;
 }
 
-// One chat turn. User turns sit in a soft accent bubble on the right; assistant
-// turns are clean, borderless prose beside the avatar (less boxy, Claude-style).
-// Wrapped in memo so that during streaming only the changing bubble re-renders.
+// One chat turn; memoized so streaming only re-renders the changing bubble.
 function MessageBubbleImpl({
   message,
   streaming,

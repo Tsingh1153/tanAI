@@ -1,9 +1,4 @@
-"""Pydantic request/response schemas.
-
-These are the API's public contract, kept separate from ORM models so the
-persistence layer can evolve independently of the wire format. ``from_attributes``
-lets us build responses directly from ORM instances.
-"""
+"""Pydantic request/response schemas — the API's wire contract, kept off the ORM."""
 
 from __future__ import annotations
 

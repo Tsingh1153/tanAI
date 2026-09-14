@@ -104,8 +104,8 @@ export function ImagePanel({
         <div className="flex-1 overflow-y-auto p-4">
           {images.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted">
-              Generated images appear here. Requires a Stable Diffusion server or
-              image API (see Settings).
+              Generated images appear here. Requires a Stable Diffusion server
+              or image API (see Settings).
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-2">

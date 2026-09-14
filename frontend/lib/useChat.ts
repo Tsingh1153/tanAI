@@ -1,9 +1,4 @@
-// React hook encapsulating a single conversation's streaming chat session.
-//
-// It owns the message list and a live WebSocket per turn: sending a message
-// optimistically appends the user turn, opens a socket to the backend, and
-// appends assistant tokens as they arrive. Keeping this in a hook keeps the UI
-// components purely presentational.
+// Hook owning one conversation's message list and its per-turn streaming WebSocket.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, wsBase } from "./api";
@@ -22,7 +17,11 @@ export interface UseChat {
   pendingApproval: PendingApproval | null;
   send: (content: string, options?: SendOptions) => void;
   regenerate: (options?: SendOptions) => void;
-  editResend: (messageId: string, content: string, options?: SendOptions) => void;
+  editResend: (
+    messageId: string,
+    content: string,
+    options?: SendOptions,
+  ) => void;
   approve: (approved: boolean) => void;
   stop: () => void;
 }
@@ -183,7 +182,10 @@ export function useChat(conversationId: string | null): UseChat {
               // Update the most recent running step for this tool.
               const steps = [...m.steps];
               for (let i = steps.length - 1; i >= 0; i--) {
-                if (steps[i].tool === msg.tool && steps[i].status === "running") {
+                if (
+                  steps[i].tool === msg.tool &&
+                  steps[i].status === "running"
+                ) {
                   steps[i] = {
                     ...steps[i],
                     output: msg.output,

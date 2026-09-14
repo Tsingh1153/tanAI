@@ -1,9 +1,4 @@
-"""Ollama-backed provider.
-
-Talks to a local Ollama server over its native REST API. Streaming uses Ollama's
-newline-delimited JSON protocol (``/api/chat`` with ``stream=true``); each line
-is one JSON object carrying an incremental ``message.content`` token.
-"""
+"""Ollama provider — local Ollama over its REST API (newline-delimited JSON stream)."""
 
 from __future__ import annotations
 
@@ -41,11 +36,7 @@ class OllamaProvider(LLMProvider):
         self._num_ctx = num_ctx
         self._keep_alive = keep_alive
         self._num_predict = num_predict
-        # A single long-lived async client is reused across requests for
-        # connection pooling; ``timeout`` covers long streaming generations.
-        # ``trust_env=False`` stops httpx from routing localhost calls through
-        # system HTTP(S)/SOCKS proxies, which would otherwise break a purely
-        # local Ollama connection.
+        # trust_env=False: don't route localhost through system HTTP/SOCKS proxies.
         self._client = httpx.AsyncClient(
             base_url=self._base_url, timeout=timeout, trust_env=False
         )
@@ -84,10 +75,8 @@ class OllamaProvider(LLMProvider):
             "model": model,
             "messages": [self._serialize(m) for m in messages],
             "stream": True,
-            # ``num_ctx`` sets the context window Ollama allocates for this
-            # request; without it Ollama silently caps context at 2048 tokens.
+            # num_ctx: Ollama silently caps context at 2048 tokens without it.
             "options": self._options(),
-            # Keep the model resident so the next message needs no reload.
             "keep_alive": self._keep_alive,
         }
         async with self._client.stream("POST", "/api/chat", json=body) as resp:
@@ -98,7 +87,6 @@ class OllamaProvider(LLMProvider):
                 try:
                     chunk = json.loads(line)
                 except json.JSONDecodeError:
-                    # Skip malformed keep-alive/partial lines defensively.
                     continue
                 if chunk.get("error"):
                     raise RuntimeError(str(chunk["error"]))
@@ -155,9 +143,7 @@ class OllamaProvider(LLMProvider):
                 except json.JSONDecodeError:
                     args = {}
             calls.append(
-                ToolCall(
-                    id=str(uuid.uuid4()), name=fn.get("name", ""), arguments=args
-                )
+                ToolCall(id=str(uuid.uuid4()), name=fn.get("name", ""), arguments=args)
             )
         return ChatResult(content=message.get("content", "") or "", tool_calls=calls)
 
@@ -176,9 +162,7 @@ class OllamaProvider(LLMProvider):
                     yield line
 
     async def delete_model(self, name: str) -> bool:
-        resp = await self._client.request(
-            "DELETE", "/api/delete", json={"model": name}
-        )
+        resp = await self._client.request("DELETE", "/api/delete", json={"model": name})
         return resp.status_code == 200
 
     async def aclose(self) -> None:

@@ -1,17 +1,11 @@
-"""Provider registry.
-
-Owns the set of live providers. Created at startup with the built-in Ollama
-backend, then extended with any user-registered OpenAI-compatible endpoints
-loaded from the database. Providers can be added and removed at runtime, which
-is what lets the app switch backends (and add a cloud key) without a restart.
-"""
+"""Registry of live providers; supports runtime add/remove for hot-swapping."""
 
 from __future__ import annotations
 
+from ..config import Settings
 from .base import LLMProvider
 from .ollama_provider import OllamaProvider
 from .openai_provider import OpenAICompatibleProvider
-from ..config import Settings
 
 
 class ProviderRegistry:

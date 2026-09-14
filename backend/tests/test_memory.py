@@ -75,7 +75,9 @@ class JsonMemoryProvider(LLMProvider):
     """complete() returns a fixed JSON memory array for extraction tests."""
 
     name = "ollama"
-    payload = '[{"content": "The user is named Tanay", "kind": "fact", "importance": 0.8}]'
+    payload = (
+        '[{"content": "The user is named Tanay", "kind": "fact", "importance": 0.8}]'
+    )
 
     async def list_models(self) -> list[ProviderModel]:
         return [ProviderModel(name="fake-model")]
@@ -97,6 +99,11 @@ def _install(provider: LLMProvider) -> None:
 
 
 def test_compression_and_memory() -> None:
+    # get_settings() is cached and main.py binds it at import, so the env var
+    # above can be locked out by another test importing the app first. Force the
+    # small budget on the live singleton so this test is order-independent.
+    get_settings().history_token_budget = 20
+
     with TestClient(app) as client:
         _install(GroundProbeProvider())
 

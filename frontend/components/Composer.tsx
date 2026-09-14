@@ -180,9 +180,7 @@ export function Composer({
           onPaste={onPaste}
           rows={1}
           disabled={disabled}
-          placeholder={
-            disabled ? "Select or start a chat…" : "Message tanAI…"
-          }
+          placeholder={disabled ? "Select or start a chat…" : "Message tanAI…"}
           className="max-h-[220px] flex-1 resize-none bg-transparent px-2 py-1.5 text-[0.95rem] text-content outline-none placeholder:text-muted disabled:opacity-50"
         />
         {streaming ? (
@@ -216,7 +214,8 @@ export function Composer({
         </p>
       )}
       <p className="mt-2 text-center text-xs text-muted">
-        Runs locally. Responses may be inaccurate — verify important information.
+        Runs locally. Responses may be inaccurate — verify important
+        information.
       </p>
     </div>
   );

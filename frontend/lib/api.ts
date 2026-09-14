@@ -1,6 +1,4 @@
-// Thin, typed REST client for the LocalMind backend. All network access to the
-// backend flows through this module so base-URL and error handling live in one
-// place.
+// Typed REST client for the backend — all network access flows through here.
 
 import type {
   Conversation,
@@ -154,7 +152,12 @@ export const api = {
 
   updateMemory: (
     id: string,
-    patch: { content?: string; kind?: string; pinned?: boolean; importance?: number },
+    patch: {
+      content?: string;
+      kind?: string;
+      pinned?: boolean;
+      importance?: number;
+    },
   ) =>
     request<MemoryInfo>(`/api/memories/${id}`, {
       method: "PATCH",
@@ -218,7 +221,9 @@ export const api = {
     }),
 
   // Transcribe an audio blob to text via local Whisper (multipart upload).
-  transcribe: async (blob: Blob): Promise<{ text: string; language: string }> => {
+  transcribe: async (
+    blob: Blob,
+  ): Promise<{ text: string; language: string }> => {
     const form = new FormData();
     form.append("file", blob, "clip.webm");
     const res = await fetch(`${API_BASE}/api/transcribe`, {

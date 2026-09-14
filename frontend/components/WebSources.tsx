@@ -17,7 +17,9 @@ export function WebSources({ sources }: { sources: WebSource[] }) {
       >
         <ChevronRight
           size={13}
-          className={open ? "rotate-90 transition-transform" : "transition-transform"}
+          className={
+            open ? "rotate-90 transition-transform" : "transition-transform"
+          }
         />
         <Globe size={12} />
         {sources.length} web source{sources.length > 1 ? "s" : ""}

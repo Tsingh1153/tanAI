@@ -1,9 +1,4 @@
-"""Manages connected MCP servers and exposes their tools to the agent.
-
-Connections are opened once (at app startup or when a server is added) and kept
-alive on ``app.state``. Each remote tool is wrapped as a normal :class:`ToolSpec`
-so the agent treats MCP tools identically to built-in and plugin tools.
-"""
+"""Manages connected MCP servers, wrapping each remote tool as a ToolSpec."""
 
 from __future__ import annotations
 

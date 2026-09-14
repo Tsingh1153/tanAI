@@ -1,11 +1,5 @@
-"""Tool registry and built-in tools.
-
-Each tool exposes a JSON-schema signature (fed to the model), a handler, and two
-safety flags. ``requires_approval`` gates anything that writes or executes behind
-an explicit user confirmation; read-only tools run freely. Filesystem tools and
-the Python tool are confined to a sandbox root so the agent cannot touch
-arbitrary files. All invocations are audit-logged.
-"""
+"""Tool registry and built-in tools. Writing/executing tools are approval-gated
+and confined to a sandbox root; all invocations are logged."""
 
 from __future__ import annotations
 
@@ -111,9 +105,7 @@ def _resolve_in_workspace(workspace: Path, rel: str) -> Path:
     candidate = (workspace / rel).resolve()
     root = workspace.resolve()
     if candidate != root and root not in candidate.parents:
-        raise ToolError(
-            f"Path '{rel}' escapes the agent workspace and is not allowed."
-        )
+        raise ToolError(f"Path '{rel}' escapes the agent workspace and is not allowed.")
     return candidate
 
 
@@ -175,9 +167,7 @@ async def _tool_fs_list(args: dict, ctx: ToolContext) -> str:
         raise ToolError("Path does not exist.")
     if not target.is_dir():
         raise ToolError("Path is not a directory.")
-    entries = sorted(
-        f"{p.name}/" if p.is_dir() else p.name for p in target.iterdir()
-    )
+    entries = sorted(f"{p.name}/" if p.is_dir() else p.name for p in target.iterdir())
     listing = "\n".join(entries) if entries else "(empty)"
     return f"Contents of {args.get('path', '.')}:\n{listing}"
 

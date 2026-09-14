@@ -1,10 +1,4 @@
-"""Async database engine, session factory, and schema bootstrap.
-
-We use SQLAlchemy 2.0's async engine so request handlers never block the event
-loop on database I/O. The default backend is SQLite (via aiosqlite) which keeps
-the app fully local and file-based, but any async SQLAlchemy URL (e.g. Postgres
-via asyncpg) works without code changes.
-"""
+"""Async database engine, session factory, and schema bootstrap (SQLite by default)."""
 
 from __future__ import annotations
 
@@ -40,23 +34,19 @@ class Base(DeclarativeBase):
 
 
 async def init_db() -> None:
-    """Create tables if they do not yet exist.
+    """Create tables if they do not yet exist."""
 
-    Importing ``models`` here (not at module top) avoids a circular import while
-    still ensuring every mapped class is registered before ``create_all`` runs.
-    """
-
-    from . import models  # noqa: F401  (registers mappers)
+    # Imported here (not at top) to dodge a circular import while still
+    # registering every mapper before create_all runs.
+    from . import models  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_apply_lightweight_migrations)
 
 
-# Columns added after a table's first release. ``create_all`` creates missing
-# tables but never alters existing ones, so we additively backfill new columns on
-# databases created by an earlier version. Each entry is idempotent — applied
-# only when the column is absent — so this is safe to run on every startup.
+# create_all never alters existing tables, so backfill columns added in later
+# versions. Idempotent: applied only when the column is absent.
 _ADDITIVE_COLUMNS: dict[str, dict[str, str]] = {
     "conversations": {
         "summary": "TEXT",
@@ -82,9 +72,7 @@ def _apply_lightweight_migrations(sync_conn: Connection) -> None:
         present = {col["name"] for col in inspector.get_columns(table)}
         for name, ddl in columns.items():
             if name not in present:
-                sync_conn.execute(
-                    text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
-                )
+                sync_conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:

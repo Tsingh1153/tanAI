@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Check,
-  ChevronRight,
-  Loader2,
-  Terminal,
-  X,
-} from "lucide-react";
+import { Check, ChevronRight, Loader2, Terminal, X } from "lucide-react";
 import clsx from "clsx";
 import type { AgentStep } from "@/lib/types";
 

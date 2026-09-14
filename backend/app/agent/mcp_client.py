@@ -1,13 +1,8 @@
-"""Minimal Model Context Protocol (MCP) client over stdio.
+"""Minimal MCP stdio client (line-delimited JSON-RPC 2.0).
 
-MCP's stdio transport is line-delimited JSON-RPC 2.0: the client launches the
-server as a subprocess and exchanges one JSON object per line over stdin/stdout.
-We implement just the pieces needed to use a server's tools — ``initialize``,
-``tools/list``, ``tools/call`` — which avoids depending on the full MCP SDK (whose
-transitive deps clash with our pinned FastAPI/Starlette).
-
-A background reader task dispatches responses to pending requests by id; anything
-without a matching id (notifications, logs) is ignored.
+Implements only initialize / tools/list / tools/call to avoid the MCP SDK,
+whose transitive deps clash with our pinned FastAPI/Starlette. A background
+reader dispatches responses to pending requests by id.
 """
 
 from __future__ import annotations
@@ -82,9 +77,7 @@ class MCPClient:
             )
         return tools
 
-    async def call_tool(
-        self, name: str, arguments: dict, timeout: float = 60.0
-    ) -> str:
+    async def call_tool(self, name: str, arguments: dict, timeout: float = 60.0) -> str:
         result = await self._request(
             "tools/call", {"name": name, "arguments": arguments}, timeout
         )

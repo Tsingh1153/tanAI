@@ -1,10 +1,4 @@
-"""Pluggable web search and page fetching.
-
-Each backend returns a normalized list of ``SearchResult``. DuckDuckGo requires
-no key (it scrapes the HTML endpoint); Brave/Tavily use an API key; SearXNG
-points at a self-hosted instance. Page fetching strips a URL to readable text
-for grounding.
-"""
+"""Pluggable web search (DuckDuckGo/Brave/Tavily/SearXNG) and page-text fetching."""
 
 from __future__ import annotations
 
@@ -191,7 +185,9 @@ async def fetch_url_text(url: str, limit: int = 4000) -> str:
 
     try:
         async with httpx.AsyncClient(
-            timeout=15, follow_redirects=True, trust_env=False,
+            timeout=15,
+            follow_redirects=True,
+            trust_env=False,
             headers={"User-Agent": _UA},
         ) as client:
             resp = await client.get(url)

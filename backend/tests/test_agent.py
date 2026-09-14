@@ -104,7 +104,11 @@ def test_agent_loop_direct() -> None:
             [
                 ChatResult(
                     "",
-                    [ToolCall("1", "write_file", {"path": "note.txt", "content": "hi"})],
+                    [
+                        ToolCall(
+                            "1", "write_file", {"path": "note.txt", "content": "hi"}
+                        )
+                    ],
                 ),
                 ChatResult("Saved.", []),
             ]
@@ -121,7 +125,11 @@ def test_agent_loop_direct() -> None:
             [
                 ChatResult(
                     "",
-                    [ToolCall("1", "write_file", {"path": "secret.txt", "content": "x"})],
+                    [
+                        ToolCall(
+                            "1", "write_file", {"path": "secret.txt", "content": "x"}
+                        )
+                    ],
                 ),
                 ChatResult("Understood, skipped.", []),
             ]

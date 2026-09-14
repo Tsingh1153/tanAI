@@ -1,12 +1,4 @@
-"""Text chunking.
-
-Retrieval quality hinges on chunk size: too large and a chunk mixes unrelated
-ideas (diluting the embedding); too small and it loses context. We target
-~1000-character chunks with a 150-character overlap so ideas that straddle a
-boundary still appear whole in at least one chunk. Chunking is paragraph-aware —
-it packs whole paragraphs together and only hard-splits paragraphs that exceed
-the size on their own.
-"""
+"""Paragraph-aware text chunking: ~1000-char chunks with 150-char overlap."""
 
 from __future__ import annotations
 
@@ -67,9 +59,7 @@ def chunk_segments(
         current = ""
         for unit in units:
             if current and len(current) + 2 + len(unit) > size:
-                chunks.append(
-                    TextChunk(current.strip(), segment.locator, ordinal)
-                )
+                chunks.append(TextChunk(current.strip(), segment.locator, ordinal))
                 ordinal += 1
                 # Seed the next chunk with the overlap tail for continuity.
                 tail = current[-overlap:] if overlap else ""

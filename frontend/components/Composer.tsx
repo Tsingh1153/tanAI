@@ -133,7 +133,7 @@ export function Composer({
           ))}
         </div>
       )}
-      <div className="flex items-end gap-2 rounded-2xl border border-border bg-surface p-2 shadow-sm focus-within:border-accent">
+      <div className="flex items-end gap-2 rounded-[1.75rem] border border-border bg-surface p-2 shadow-md transition-shadow focus-within:border-accent/60 focus-within:shadow-lg">
         <button
           onClick={() => fileRef.current?.click()}
           disabled={disabled}

@@ -35,9 +35,13 @@ export function MessageList({
     if (nearBottom) endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming]);
 
+  // Pass stable references so memoized bubbles don't re-render every token.
+  // (onEdit takes the message id, so it's the same function for every row.)
+  const editHandler = streaming ? undefined : onEdit;
+
   return (
     <div ref={containerRef} className="flex-1 overflow-y-auto">
-      <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8">
+      <div className="mx-auto flex max-w-3xl flex-col gap-7 px-4 py-8">
         {messages.map((m, i) => (
           <MessageBubble
             key={m.id}
@@ -45,15 +49,9 @@ export function MessageList({
             streaming={
               streaming && i === messages.length - 1 && m.role === "assistant"
             }
-            onEdit={
-              m.role === "user" && onEdit && !streaming
-                ? (content) => onEdit(m.id, content)
-                : undefined
-            }
+            onEdit={editHandler}
             onRegenerate={
-              i === lastAssistantIndex && onRegenerate && !streaming
-                ? onRegenerate
-                : undefined
+              i === lastAssistantIndex && !streaming ? onRegenerate : undefined
             }
           />
         ))}

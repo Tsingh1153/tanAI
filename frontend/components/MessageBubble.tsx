@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import {
   Brain,
   Check,
@@ -25,9 +25,10 @@ function imageSrc(url: string): string {
   return url.startsWith("data:") ? url : `${API_BASE}${url}`;
 }
 
-// One chat turn. User turns are right-aligned in an accent bubble; assistant
-// turns are full-width prose, mirroring the Claude layout.
-export function MessageBubble({
+// One chat turn. User turns sit in a soft accent bubble on the right; assistant
+// turns are clean, borderless prose beside the avatar (less boxy, Claude-style).
+// Wrapped in memo so that during streaming only the changing bubble re-renders.
+function MessageBubbleImpl({
   message,
   streaming,
   onEdit,
@@ -35,7 +36,7 @@ export function MessageBubble({
 }: {
   message: Message;
   streaming?: boolean;
-  onEdit?: (newContent: string) => void;
+  onEdit?: (id: string, newContent: string) => void;
   onRegenerate?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -68,16 +69,16 @@ export function MessageBubble({
       )}
     >
       {!isUser && (
-        <div className="mt-0.5 shrink-0">
-          <Logo size={28} />
+        <div className="mt-1 shrink-0">
+          <Logo size={26} />
         </div>
       )}
       <div
         className={clsx(
-          "relative max-w-[min(46rem,100%)] rounded-2xl px-4 py-3 text-[0.95rem] shadow-sm",
+          "relative min-w-0 text-[0.95rem]",
           isUser
-            ? "bg-accent text-accent-fg"
-            : "border border-border bg-surface text-content",
+            ? "max-w-[min(42rem,85%)] rounded-3xl rounded-br-md bg-accent px-4 py-2.5 text-accent-fg shadow-sm"
+            : "max-w-[min(46rem,100%)] pb-1 text-content",
         )}
       >
         {message.images && message.images.length > 0 && (
@@ -88,7 +89,7 @@ export function MessageBubble({
                 key={i}
                 src={imageSrc(src)}
                 alt="attachment"
-                className="max-h-48 rounded-lg border border-border object-cover"
+                className="max-h-48 rounded-xl border border-border/60 object-cover"
               />
             ))}
           </div>
@@ -101,7 +102,7 @@ export function MessageBubble({
                 autoFocus
                 onChange={(e) => setDraft(e.target.value)}
                 rows={Math.min(8, draft.split("\n").length + 1)}
-                className="w-full resize-none rounded-lg bg-accent-fg/10 px-2 py-1.5 text-accent-fg outline-none"
+                className="w-full resize-none rounded-xl bg-accent-fg/10 px-2 py-1.5 text-accent-fg outline-none"
               />
               <div className="mt-2 flex justify-end gap-2">
                 <button
@@ -116,7 +117,7 @@ export function MessageBubble({
                 <button
                   onClick={() => {
                     setEditing(false);
-                    if (draft.trim()) onEdit?.(draft.trim());
+                    if (draft.trim()) onEdit?.(message.id, draft.trim());
                   }}
                   className="rounded-lg bg-accent-fg/20 px-2.5 py-1 text-xs font-medium text-accent-fg hover:bg-accent-fg/30"
                 >
@@ -154,36 +155,25 @@ export function MessageBubble({
           </>
         )}
 
-        {!isUser && message.content && (
-          <div className="absolute -bottom-3 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        {/* Action row — sits just below the message on hover. */}
+        {!isUser && message.content && !streaming && (
+          <div className="mt-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
             {onRegenerate && (
-              <button
-                onClick={onRegenerate}
-                className="rounded-md border border-border bg-elevated p-1 text-muted hover:text-content"
-                aria-label="Regenerate"
-                title="Regenerate"
-              >
+              <ActionButton onClick={onRegenerate} label="Regenerate">
                 <RefreshCw size={14} />
-              </button>
+              </ActionButton>
             )}
             {ttsSupported() && (
-              <button
+              <ActionButton
                 onClick={toggleSpeak}
-                className="rounded-md border border-border bg-elevated p-1 text-muted hover:text-content"
-                aria-label={speaking ? "Stop speaking" : "Read aloud"}
-                title={speaking ? "Stop" : "Read aloud"}
+                label={speaking ? "Stop" : "Read aloud"}
               >
                 {speaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
-              </button>
+              </ActionButton>
             )}
-            <button
-              onClick={copy}
-              className="rounded-md border border-border bg-elevated p-1 text-muted hover:text-content"
-              aria-label="Copy message"
-              title="Copy"
-            >
+            <ActionButton onClick={copy} label="Copy">
               {copied ? <Check size={14} /> : <Copy size={14} />}
-            </button>
+            </ActionButton>
           </div>
         )}
 
@@ -193,14 +183,37 @@ export function MessageBubble({
               setDraft(message.content);
               setEditing(true);
             }}
-            className="absolute -bottom-3 right-2 rounded-md border border-border bg-elevated p-1 text-muted opacity-0 transition-opacity hover:text-content group-hover:opacity-100"
+            className="absolute -bottom-2.5 right-2 rounded-lg border border-border bg-elevated p-1 text-muted opacity-0 shadow-sm transition-opacity hover:text-content group-hover:opacity-100"
             aria-label="Edit message"
             title="Edit"
           >
-            <Pencil size={14} />
+            <Pencil size={13} />
           </button>
         )}
       </div>
     </div>
   );
 }
+
+function ActionButton({
+  onClick,
+  label,
+  children,
+}: {
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="rounded-lg p-1.5 text-muted transition-colors hover:bg-elevated hover:text-content"
+      aria-label={label}
+      title={label}
+    >
+      {children}
+    </button>
+  );
+}
+
+export const MessageBubble = memo(MessageBubbleImpl);

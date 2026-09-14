@@ -81,6 +81,17 @@ export default function Home() {
     [model, provider, useRag, availableDocs, useMemory, useWeb, useAgent],
   );
 
+  // Stable handlers for message edit / regenerate (keeps memoized bubbles from
+  // re-rendering on every streamed token).
+  const handleEdit = useCallback(
+    (id: string, content: string) => editResend(id, content, chatOptions()),
+    [editResend, chatOptions],
+  );
+  const handleRegenerate = useCallback(
+    () => regenerate(chatOptions()),
+    [regenerate, chatOptions],
+  );
+
   // Documents available to the active chat = its own uploads + global "memory".
   const refreshDocs = useCallback(async () => {
     try {
@@ -370,8 +381,8 @@ export default function Home() {
           <MessageList
             messages={messages}
             streaming={streaming}
-            onEdit={(id, content) => editResend(id, content, chatOptions())}
-            onRegenerate={() => regenerate(chatOptions())}
+            onEdit={handleEdit}
+            onRegenerate={handleRegenerate}
           />
         )}
 

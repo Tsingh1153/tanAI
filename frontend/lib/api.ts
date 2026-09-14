@@ -6,6 +6,7 @@ import type {
   Conversation,
   ConversationWithMessages,
   DocumentInfo,
+  Folder,
   Health,
   MCPServerInfo,
   MemoryInfo,
@@ -58,11 +59,36 @@ export const api = {
       body: JSON.stringify({ model }),
     }),
 
-  updateConversation: (id: string, patch: { title?: string; model?: string }) =>
+  updateConversation: (
+    id: string,
+    patch: {
+      title?: string;
+      model?: string;
+      pinned?: boolean;
+      folder_id?: string | null;
+    },
+  ) =>
     request<Conversation>(`/api/conversations/${id}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
+
+  listFolders: () => request<Folder[]>("/api/folders"),
+
+  createFolder: (name: string) =>
+    request<Folder>("/api/folders", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+
+  renameFolder: (id: string, name: string) =>
+    request<Folder>(`/api/folders/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
+
+  deleteFolder: (id: string) =>
+    request<void>(`/api/folders/${id}`, { method: "DELETE" }),
 
   deleteConversation: (id: string) =>
     request<void>(`/api/conversations/${id}`, { method: "DELETE" }),

@@ -64,6 +64,7 @@ from .repositories import (
     ChunkRepository,
     ConversationRepository,
     DocumentRepository,
+    FolderRepository,
     MCPServerRepository,
     MemoryRepository,
     MessageRepository,
@@ -76,6 +77,9 @@ from .schemas import (
     ConversationUpdate,
     ConversationWithMessages,
     DocumentOut,
+    FolderCreate,
+    FolderOut,
+    FolderUpdate,
     HealthOut,
     MemoryCreate,
     MemoryOut,
@@ -466,9 +470,10 @@ async def update_conversation(
     conversation = await repo.get(conversation_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    updated = await repo.update(
-        conversation, title=payload.title, model=payload.model
-    )
+    # exclude_unset means only the fields the client actually sent are applied —
+    # so folder_id=null (unfile) is honored, while omitting it leaves it alone.
+    fields = payload.model_dump(exclude_unset=True)
+    updated = await repo.apply(conversation, fields) if fields else conversation
     return ConversationOut.model_validate(updated)
 
 
@@ -486,6 +491,50 @@ async def delete_conversation(
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     await repo.delete(conversation)
+    return Response(status_code=204)
+
+
+@app.get("/api/folders", response_model=list[FolderOut])
+async def list_folders(
+    session: AsyncSession = Depends(get_session),
+) -> list[FolderOut]:
+    return [FolderOut.model_validate(f) for f in await FolderRepository(session).list()]
+
+
+@app.post("/api/folders", response_model=FolderOut)
+async def create_folder(
+    payload: FolderCreate,
+    session: AsyncSession = Depends(get_session),
+) -> FolderOut:
+    folder = await FolderRepository(session).create(payload.name.strip() or "Folder")
+    return FolderOut.model_validate(folder)
+
+
+@app.patch("/api/folders/{folder_id}", response_model=FolderOut)
+async def rename_folder(
+    folder_id: str,
+    payload: FolderUpdate,
+    session: AsyncSession = Depends(get_session),
+) -> FolderOut:
+    repo = FolderRepository(session)
+    folder = await repo.get(folder_id)
+    if folder is None:
+        raise HTTPException(status_code=404, detail="Folder not found")
+    return FolderOut.model_validate(await repo.rename(folder, payload.name.strip()))
+
+
+@app.delete("/api/folders/{folder_id}", status_code=204, response_class=Response)
+async def delete_folder(
+    folder_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    repo = FolderRepository(session)
+    folder = await repo.get(folder_id)
+    if folder is None:
+        raise HTTPException(status_code=404, detail="Folder not found")
+    # Detach its conversations first (they become ungrouped, not deleted).
+    await ConversationRepository(session).clear_folder(folder_id)
+    await repo.delete(folder)
     return Response(status_code=204)
 
 

@@ -21,3 +21,7 @@ frontend/out/
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Runtime user data (never commit)
+backend/data/
+backend/.env

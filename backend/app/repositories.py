@@ -18,6 +18,7 @@ from .models import (
     Chunk,
     Conversation,
     Document,
+    Folder,
     MCPServer,
     Memory,
     Message,
@@ -58,8 +59,63 @@ class ConversationRepository:
         await self._session.refresh(conversation)
         return conversation
 
+    async def apply(
+        self, conversation: Conversation, fields: dict[str, object]
+    ) -> Conversation:
+        """Set exactly the given fields, including explicit None (e.g. unfile)."""
+
+        for key, value in fields.items():
+            setattr(conversation, key, value)
+        await self._session.commit()
+        await self._session.refresh(conversation)
+        return conversation
+
     async def delete(self, conversation: Conversation) -> None:
         await self._session.delete(conversation)
+        await self._session.commit()
+
+    async def clear_folder(self, folder_id: str) -> None:
+        """Detach every conversation from a folder (used when deleting it)."""
+
+        result = await self._session.execute(
+            select(Conversation).where(Conversation.folder_id == folder_id)
+        )
+        for conversation in result.scalars().all():
+            conversation.folder_id = None
+        await self._session.commit()
+
+
+class FolderRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def list(self) -> list[Folder]:
+        result = await self._session.execute(
+            select(Folder).order_by(Folder.created_at)
+        )
+        return list(result.scalars().all())
+
+    async def get(self, folder_id: str) -> Folder | None:
+        result = await self._session.execute(
+            select(Folder).where(Folder.id == folder_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def create(self, name: str) -> Folder:
+        folder = Folder(name=name)
+        self._session.add(folder)
+        await self._session.commit()
+        await self._session.refresh(folder)
+        return folder
+
+    async def rename(self, folder: Folder, name: str) -> Folder:
+        folder.name = name
+        await self._session.commit()
+        await self._session.refresh(folder)
+        return folder
+
+    async def delete(self, folder: Folder) -> None:
+        await self._session.delete(folder)
         await self._session.commit()
 
 

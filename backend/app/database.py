@@ -61,6 +61,8 @@ _ADDITIVE_COLUMNS: dict[str, dict[str, str]] = {
     "conversations": {
         "summary": "TEXT",
         "summarized_count": "INTEGER NOT NULL DEFAULT 0",
+        "pinned": "BOOLEAN NOT NULL DEFAULT 0",
+        "folder_id": "VARCHAR(36)",
     },
     "documents": {
         "conversation_id": "VARCHAR(36)",

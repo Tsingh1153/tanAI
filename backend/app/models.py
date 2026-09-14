@@ -42,6 +42,10 @@ class Conversation(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     title: Mapped[str] = mapped_column(String(255), default="New chat")
     model: Mapped[str] = mapped_column(String(128))
+    # Organization: pin to the top of the sidebar, and optionally file under a
+    # folder (NULL = ungrouped).
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    folder_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     # Rolling summary of the oldest turns that have been compressed out of the
     # live window, plus how many leading messages it represents.
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -57,6 +61,18 @@ class Conversation(Base):
         back_populates="conversation",
         cascade="all, delete-orphan",
         order_by="Message.created_at",
+    )
+
+
+class Folder(Base):
+    """A named group for organizing conversations."""
+
+    __tablename__ = "folders"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now
     )
 
 

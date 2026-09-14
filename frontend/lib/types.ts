@@ -76,8 +76,16 @@ export interface Conversation {
   id: string;
   title: string;
   model: string;
+  pinned: boolean;
+  folder_id?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  created_at: string;
 }
 
 export interface ConversationWithMessages extends Conversation {

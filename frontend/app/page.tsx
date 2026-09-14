@@ -253,14 +253,62 @@ export default function Home() {
 
   const offline = health && !health.provider_online;
 
+  // Resizable sidebar (persisted).
+  const [sidebarWidth, setSidebarWidth] = useState(288);
+  const widthRef = useRef(288);
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    const saved = Number(localStorage.getItem("tanai-sidebar-width"));
+    if (saved >= 220 && saved <= 520) {
+      setSidebarWidth(saved);
+      widthRef.current = saved;
+    }
+  }, []);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!draggingRef.current) return;
+      const w = Math.min(520, Math.max(220, e.clientX));
+      widthRef.current = w;
+      setSidebarWidth(w);
+    };
+    const onUp = () => {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      document.body.style.userSelect = "";
+      try {
+        localStorage.setItem("tanai-sidebar-width", String(widthRef.current));
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
   return (
     <div className="flex h-screen w-screen overflow-hidden">
       <Sidebar
         conversations={conversations}
         activeId={activeId}
+        width={sidebarWidth}
         onSelect={setActiveId}
         onNew={handleNew}
         onDelete={handleDelete}
+        onRefresh={refreshConversations}
+      />
+      <div
+        onMouseDown={() => {
+          draggingRef.current = true;
+          document.body.style.userSelect = "none";
+        }}
+        className="w-1 shrink-0 cursor-col-resize bg-transparent transition-colors hover:bg-accent/40"
+        title="Drag to resize"
       />
 
       <main className="flex h-full flex-1 flex-col">

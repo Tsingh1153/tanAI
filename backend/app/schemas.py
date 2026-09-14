@@ -29,6 +29,8 @@ class ConversationOut(BaseModel):
     id: str
     title: str
     model: str
+    pinned: bool = False
+    folder_id: str | None = None
     summary: str | None = None
     summarized_count: int = 0
     created_at: datetime
@@ -47,6 +49,25 @@ class ConversationCreate(BaseModel):
 class ConversationUpdate(BaseModel):
     title: str | None = None
     model: str | None = None
+    pinned: bool | None = None
+    # Use the sentinel/omit distinction: send folder_id=null to unfile.
+    folder_id: str | None = None
+
+
+class FolderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    created_at: datetime
+
+
+class FolderCreate(BaseModel):
+    name: str
+
+
+class FolderUpdate(BaseModel):
+    name: str
 
 
 class ChatRequest(BaseModel):

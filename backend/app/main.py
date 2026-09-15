@@ -42,6 +42,7 @@ from .database import SessionLocal, get_session, init_db
 from .hardware import detect_hardware
 from .imagegen import ImageGenError, build_image_generator
 from .memory import MemoryService
+from .memory.tokens import estimate_tokens
 from .personas import PERSONAS, get_persona
 from .providers import (
     ChatMessage,
@@ -63,6 +64,7 @@ from .repositories import (
     PersonaRepository,
     ProviderRepository,
 )
+from .router import route as route_turn
 from .schemas import (
     ChatRequest,
     ConversationCreate,
@@ -1129,6 +1131,31 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
             )
             use_agent = bool(message.get("agent")) and settings.agent_enabled
 
+            # Auto router: resolve "auto" to a concrete model for this turn.
+            if model == "auto":
+                available = await _available_models(registry)
+                chosen = route_turn(
+                    content,
+                    bool(images),
+                    estimate_tokens(content),
+                    available,
+                    settings.default_model,
+                )
+                if chosen:
+                    model = chosen.model
+                    provider_name = chosen.provider
+                    await websocket.send_json(
+                        {
+                            "type": "router",
+                            "model": chosen.model,
+                            "provider": chosen.provider,
+                            "category": chosen.category,
+                            "reason": chosen.reason,
+                        }
+                    )
+                else:
+                    model = None  # nothing installed; fall back to conversation model
+
             if use_agent:
                 await _run_agent_turn(
                     websocket,
@@ -1269,6 +1296,19 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                 )
     except WebSocketDisconnect:
         return
+
+
+async def _available_models(registry: ProviderRegistry) -> list[tuple[str, str]]:
+    """(model_name, provider_name) across every reachable provider, for routing."""
+
+    out: list[tuple[str, str]] = []
+    for provider in registry.all():
+        try:
+            for m in await provider.list_models():
+                out.append((m.name, provider.name))
+        except Exception:
+            continue
+    return out
 
 
 async def _persona_prompt(persona_id: str | None) -> str | None:

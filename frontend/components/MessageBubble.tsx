@@ -7,6 +7,7 @@ import {
   Copy,
   Pencil,
   RefreshCw,
+  Shuffle,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -128,6 +129,16 @@ function MessageBubbleImpl({
           ) : null
         ) : (
           <>
+            {message.routed && (
+              <div className="mb-2 flex items-center gap-1.5 text-xs text-muted">
+                <Shuffle size={13} />
+                <span>
+                  Auto →{" "}
+                  <span className="text-content">{message.routed.model}</span> ·{" "}
+                  {message.routed.category}
+                </span>
+              </div>
+            )}
             {message.steps && message.steps.length > 0 && (
               <AgentSteps steps={message.steps} />
             )}

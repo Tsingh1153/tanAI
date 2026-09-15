@@ -65,6 +65,11 @@ at a remote API yourself.
   persona editor (the sliders icon on the tab bar): give it a label, a
   description, and a system prompt, and it becomes a selectable tab. Built-in
   finance modes are read-only; custom ones are stored in the database.
+- **Auto model routing** — pick **Auto** in the model selector and each message
+  is classified (vision / code / math / long-context / general) and dispatched to
+  the best-matching model you have installed, falling back to the default. The
+  reply shows a small badge for which model answered and why. Routing is a fast,
+  dependency-free heuristic, so it adds no extra model call or latency.
 - **Web search** — flip on **Web** and answers are grounded in live search
   results (DuckDuckGo by default, no key; Brave/Tavily/SearXNG optional) with
   clickable citations. Also available as a `web_search` agent tool.

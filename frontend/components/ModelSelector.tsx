@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Shuffle } from "lucide-react";
 import clsx from "clsx";
 import type { ModelInfo } from "@/lib/types";
 
@@ -49,7 +49,8 @@ export function ModelSelector({
     groups.set(m.provider_label, arr);
   }
 
-  const label = model || "Select model";
+  const isAuto = model === "auto";
+  const label = isAuto ? "Auto" : model || "Select model";
 
   return (
     <div ref={ref} className="relative">
@@ -65,6 +66,29 @@ export function ModelSelector({
 
       {open && (
         <div className="absolute right-0 z-40 mt-1.5 max-h-[60vh] w-64 overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-xl">
+          <button
+            onClick={() => {
+              onChange("auto", "auto");
+              setOpen(false);
+            }}
+            className={clsx(
+              "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors",
+              isAuto
+                ? "bg-elevated text-content"
+                : "text-content hover:bg-elevated",
+            )}
+          >
+            <Shuffle
+              size={14}
+              className={clsx(
+                "shrink-0",
+                isAuto ? "text-accent" : "text-muted",
+              )}
+            />
+            <span className="flex-1 truncate">Auto</span>
+            <span className="text-[11px] text-muted">routes each message</span>
+          </button>
+          <div className="my-1 h-px bg-border" />
           {models.length === 0 ? (
             <p className="px-3 py-4 text-center text-sm text-muted">
               No models found. Download one in Settings.

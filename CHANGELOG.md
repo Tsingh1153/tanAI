@@ -11,6 +11,17 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.3.0] — 2026-09-15
+
+### Added
+- **Auto model routing** — an "Auto" option classifies each message (vision /
+  code / math / long-context / general) and dispatches it to the best installed
+  model, with a badge on the reply showing which model answered and why. Pure
+  heuristic router (`app/router.py`), no extra model call; emits a `router`
+  WebSocket event.
+
+---
+
 ## [1.2.0] — 2026-09-15
 
 ### Added

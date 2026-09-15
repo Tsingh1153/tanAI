@@ -52,6 +52,8 @@ export interface Message {
   memories?: MemoryInfo[];
   // Agent tool-use timeline for this turn.
   steps?: AgentStep[];
+  // When Auto mode routed this turn: which model answered and the category.
+  routed?: { model: string; category: string };
 }
 
 export interface PendingApproval {
@@ -162,6 +164,13 @@ export type StreamEvent =
       arguments: Record<string, unknown>;
     }
   | { type: "token"; data: string }
+  | {
+      type: "router";
+      model: string;
+      provider: string;
+      category: string;
+      reason: string;
+    }
   | { type: "done" }
   | { type: "error"; detail: string };
 

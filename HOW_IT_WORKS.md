@@ -417,6 +417,16 @@ web search feed into. The model isn't retrained or swapped — it just receives
 different instructions, so it *behaves* like a finance tutor (or whatever mode you
 authored).
 
+There's a sibling idea in **Auto mode**. Instead of one model with all skills,
+you keep several specialized models and pick the right one per message. A tiny
+classifier (here, a keyword/shape heuristic — no extra model call) buckets each
+turn into vision / code / math / long-context / general, and the backend routes to
+the best-matching model you have installed. It's the cheap, practical version of
+"use every model's strengths": one model answers per turn, chosen for the job, and
+the UI shows which one and why. (The pricier alternative, Mixture-of-Agents, asks
+several models and has one synthesize their answers — better output, but several
+models' worth of compute per question.)
+
 This is why "specializing" a modern LLM app usually means **prompting + retrieval**,
 not building a neural network. Pair a persona with the bundled finance corpus
 (loaded via `scripts/seed_corpus.py`) and you get a specialist that both talks and

@@ -164,6 +164,18 @@ export function useChat(conversationId: string | null): UseChat {
               m.id === assistantId ? { ...m, memories: msg.data } : m,
             ),
           );
+        } else if (msg.type === "router") {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? {
+                    ...m,
+                    model: msg.model,
+                    routed: { model: msg.model, category: msg.category },
+                  }
+                : m,
+            ),
+          );
         } else if (msg.type === "tool_call") {
           const step: AgentStep = {
             tool: msg.tool,

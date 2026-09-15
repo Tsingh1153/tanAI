@@ -14,6 +14,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ## [1.2.0] — 2026-09-15
 
 ### Added
+- **Custom personas** — create, edit, and delete your own assistant modes from a
+  persona editor (label + description + system prompt). Stored in a new `personas`
+  table and exposed via full CRUD on `/api/personas`; built-in finance modes stay
+  read-only. Built-in and custom personas resolve through one code path.
 - **Finance personas** — a tab bar switches the assistant into a domain mode:
   Personal Finance, Markets & Investing, Corporate Finance, or Finance Tutor
   (General is the default). Each injects a domain system prompt served from a new

@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from .models import (
     Chunk,
     Conversation,
+    CustomPersona,
     Document,
     Folder,
     MCPServer,
@@ -398,6 +399,47 @@ class ProviderRepository:
 
     async def delete(self, provider: ProviderConfig) -> None:
         await self._session.delete(provider)
+        await self._session.commit()
+
+
+class PersonaRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def list(self) -> list[CustomPersona]:
+        result = await self._session.execute(
+            select(CustomPersona).order_by(CustomPersona.created_at)
+        )
+        return list(result.scalars().all())
+
+    async def get(self, persona_id: str) -> CustomPersona | None:
+        result = await self._session.execute(
+            select(CustomPersona).where(CustomPersona.id == persona_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def create(
+        self, label: str, description: str, system_prompt: str
+    ) -> CustomPersona:
+        persona = CustomPersona(
+            label=label, description=description, system_prompt=system_prompt
+        )
+        self._session.add(persona)
+        await self._session.commit()
+        await self._session.refresh(persona)
+        return persona
+
+    async def update(
+        self, persona: CustomPersona, fields: dict[str, object]
+    ) -> CustomPersona:
+        for key, value in fields.items():
+            setattr(persona, key, value)
+        await self._session.commit()
+        await self._session.refresh(persona)
+        return persona
+
+    async def delete(self, persona: CustomPersona) -> None:
+        await self._session.delete(persona)
         await self._session.commit()
 
 

@@ -96,6 +96,8 @@ export interface Persona {
   id: string;
   label: string;
   description: string;
+  system_prompt: string;
+  builtin: boolean;
 }
 
 export interface ModelInfo {

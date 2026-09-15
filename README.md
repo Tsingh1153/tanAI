@@ -61,7 +61,10 @@ at a remote API yourself.
   education-not-advice guardrail (see "Why the advice guardrail" below). A bundled
   **finance corpus** (`backend/corpus/finance/`) can be loaded as global RAG
   documents via `scripts/seed_corpus.py` so the personas are grounded out of the
-  box. Personas are served from `/api/personas`, so adding more is a one-file edit.
+  box. **Custom personas** — create, edit, and delete your own modes from the
+  persona editor (the sliders icon on the tab bar): give it a label, a
+  description, and a system prompt, and it becomes a selectable tab. Built-in
+  finance modes are read-only; custom ones are stored in the database.
 - **Web search** — flip on **Web** and answers are grounded in live search
   results (DuckDuckGo by default, no key; Brave/Tavily/SearXNG optional) with
   clickable citations. Also available as a `web_search` agent tool.
@@ -232,7 +235,9 @@ tanAI/
 - **Personas are data, not code paths.** A persona is just a system prompt fetched
   from `/api/personas` and prepended to the turn's system primes — the same
   mechanism RAG, memory, and web search already use. Switching modes changes the
-  prompt, nothing else, so new domains cost one entry in `backend/app/personas.py`.
+  prompt, nothing else. Built-in personas live in `backend/app/personas.py`;
+  user-created ones are rows in the `personas` table, and both resolve through the
+  same path, so the chat/agent code never has to know which kind it got.
 
 ### Why the advice guardrail
 

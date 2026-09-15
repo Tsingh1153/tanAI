@@ -184,6 +184,18 @@ class ProviderConfig(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class CustomPersona(Base):
+    """A user-created assistant persona (domain system prompt), editable in the UI."""
+
+    __tablename__ = "personas"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    label: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(String(512), default="")
+    system_prompt: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class MCPServer(Base):
     """A configured Model Context Protocol server (stdio subprocess)."""
 

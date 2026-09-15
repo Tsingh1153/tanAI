@@ -32,6 +32,7 @@ import { WebcamPanel } from "@/components/WebcamPanel";
 import { ImagePanel } from "@/components/ImagePanel";
 import { Logo } from "@/components/Logo";
 import { PersonaTabs } from "@/components/PersonaTabs";
+import { PersonasPanel } from "@/components/PersonasPanel";
 import { useChat } from "@/lib/useChat";
 import { api } from "@/lib/api";
 import type { Conversation, Health, ModelInfo, Persona } from "@/lib/types";
@@ -57,6 +58,7 @@ export default function Home() {
   const [speakReplies, setSpeakReplies] = useState(false);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [persona, setPersona] = useState<string | null>(null);
+  const [personasOpen, setPersonasOpen] = useState(false);
   const prevStreamingRef = useRef(false);
 
   const {
@@ -161,6 +163,17 @@ export default function Home() {
     }
   }, []);
 
+  const refreshPersonas = useCallback(async () => {
+    try {
+      const list = await api.listPersonas();
+      setPersonas(list);
+      // If the active persona was deleted, fall back to General.
+      setPersona((cur) => (cur && list.some((p) => p.id === cur) ? cur : null));
+    } catch {
+      /* personas are optional; General mode still works */
+    }
+  }, []);
+
   // Keep the model list current: repopulates if Ollama starts after the app,
   // or once a newly downloaded model finishes.
   useEffect(() => {
@@ -195,15 +208,11 @@ export default function Home() {
       } catch {
         /* Ollama may be offline; model list stays empty. */
       }
-      try {
-        setPersonas(await api.listPersonas());
-      } catch {
-        /* personas are optional; General mode still works */
-      }
+      await refreshPersonas();
       const list = await refreshConversations();
       if (list.length > 0) setActiveId(list[0].id);
     })();
-  }, [refreshConversations]);
+  }, [refreshConversations, refreshPersonas]);
 
   const activeConversation = conversations.find((c) => c.id === activeId);
 
@@ -422,12 +431,13 @@ export default function Home() {
           />
         )}
 
-        {!loadError && personas.length > 0 && (
+        {!loadError && (
           <div className="pt-2">
             <PersonaTabs
               personas={personas}
               active={persona}
               onChange={setPersona}
+              onManage={() => setPersonasOpen(true)}
             />
           </div>
         )}
@@ -552,6 +562,13 @@ export default function Home() {
       />
 
       <ImagePanel open={imageOpen} onClose={() => setImageOpen(false)} />
+
+      <PersonasPanel
+        open={personasOpen}
+        onClose={() => setPersonasOpen(false)}
+        personas={personas}
+        onChange={refreshPersonas}
+      />
     </div>
   );
 }

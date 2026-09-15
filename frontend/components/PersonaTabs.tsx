@@ -1,21 +1,23 @@
 "use client";
 
 import clsx from "clsx";
+import { SlidersHorizontal } from "lucide-react";
 import type { Persona } from "@/lib/types";
 
 // Horizontal tabs to switch the assistant's domain persona. "General" (id null)
-// is the default and sends no persona, leaving tanAI unspecialized.
+// is the default and sends no persona, leaving tanAI unspecialized. The gear
+// opens the editor for creating and managing custom personas.
 export function PersonaTabs({
   personas,
   active,
   onChange,
+  onManage,
 }: {
   personas: Persona[];
   active: string | null;
   onChange: (id: string | null) => void;
+  onManage: () => void;
 }) {
-  if (personas.length === 0) return null;
-
   const activePersona = personas.find((p) => p.id === active) ?? null;
 
   return (
@@ -35,6 +37,14 @@ export function PersonaTabs({
             onClick={() => onChange(p.id)}
           />
         ))}
+        <button
+          onClick={onManage}
+          title="Manage personas"
+          aria-label="Manage personas"
+          className="ml-0.5 rounded-full p-1.5 text-muted transition-colors hover:bg-elevated hover:text-content"
+        >
+          <SlidersHorizontal size={14} />
+        </button>
       </div>
       {activePersona && (
         <p className="mt-1 px-0.5 text-xs text-muted">

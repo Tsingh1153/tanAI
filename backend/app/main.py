@@ -60,6 +60,7 @@ from .repositories import (
     MCPServerRepository,
     MemoryRepository,
     MessageRepository,
+    PersonaRepository,
     ProviderRepository,
 )
 from .schemas import (
@@ -81,7 +82,9 @@ from .schemas import (
     MemoryUpdate,
     MessageOut,
     ModelInfo,
+    PersonaCreate,
     PersonaOut,
+    PersonaUpdate,
     PluginInfo,
     ProviderCreate,
     ProviderOut,
@@ -246,11 +249,77 @@ async def health(
     )
 
 
+def _persona_out(row, builtin: bool) -> PersonaOut:
+    return PersonaOut(
+        id=row.id,
+        label=row.label,
+        description=row.description,
+        system_prompt=row.system_prompt,
+        builtin=builtin,
+    )
+
+
 @app.get("/api/personas", response_model=list[PersonaOut])
-async def list_personas() -> list[PersonaOut]:
-    return [
-        PersonaOut(id=p.id, label=p.label, description=p.description) for p in PERSONAS
-    ]
+async def list_personas(
+    session: AsyncSession = Depends(get_session),
+) -> list[PersonaOut]:
+    """Built-in personas (read-only) followed by the user's custom ones."""
+
+    out = [_persona_out(p, builtin=True) for p in PERSONAS]
+    for row in await PersonaRepository(session).list():
+        out.append(_persona_out(row, builtin=False))
+    return out
+
+
+@app.post("/api/personas", response_model=PersonaOut)
+async def create_persona(
+    payload: PersonaCreate,
+    session: AsyncSession = Depends(get_session),
+) -> PersonaOut:
+    label = payload.label.strip()
+    prompt = payload.system_prompt.strip()
+    if not label or not prompt:
+        raise HTTPException(
+            status_code=400, detail="Label and system prompt are required."
+        )
+    row = await PersonaRepository(session).create(
+        label=label, description=payload.description.strip(), system_prompt=prompt
+    )
+    return _persona_out(row, builtin=False)
+
+
+@app.patch("/api/personas/{persona_id}", response_model=PersonaOut)
+async def update_persona(
+    persona_id: str,
+    payload: PersonaUpdate,
+    session: AsyncSession = Depends(get_session),
+) -> PersonaOut:
+    if get_persona(persona_id):
+        raise HTTPException(status_code=400, detail="Built-in personas are read-only.")
+    repo = PersonaRepository(session)
+    row = await repo.get(persona_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    fields = payload.model_dump(exclude_unset=True)
+    row = await repo.update(row, fields) if fields else row
+    return _persona_out(row, builtin=False)
+
+
+@app.delete("/api/personas/{persona_id}", status_code=204, response_class=Response)
+async def delete_persona(
+    persona_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    if get_persona(persona_id):
+        raise HTTPException(
+            status_code=400, detail="Built-in personas cannot be deleted."
+        )
+    repo = PersonaRepository(session)
+    row = await repo.get(persona_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    await repo.delete(row)
+    return Response(status_code=204)
 
 
 @app.get("/api/models", response_model=list[ModelInfo])
@@ -1049,7 +1118,7 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                 continue
             model = message.get("model")
             provider_name = message.get("provider")
-            persona = get_persona(message.get("persona"))
+            persona_prompt = await _persona_prompt(message.get("persona"))
             use_rag = bool(message.get("use_rag"))
             document_ids = message.get("document_ids") or None
             images = message.get("images") or None
@@ -1070,7 +1139,7 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                     use_memory,
                     registry,
                     embeddings,
-                    persona.system_prompt if persona else None,
+                    persona_prompt,
                 )
                 continue
 
@@ -1085,8 +1154,8 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                 await websocket.send_json({"type": "start"})
 
                 system_primes: list[str] = []
-                if persona:
-                    system_primes.append(persona.system_prompt)
+                if persona_prompt:
+                    system_primes.append(persona_prompt)
 
                 # Long-term memory recall (best-effort; never blocks the answer).
                 if use_memory:
@@ -1200,6 +1269,19 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                 )
     except WebSocketDisconnect:
         return
+
+
+async def _persona_prompt(persona_id: str | None) -> str | None:
+    """Resolve a persona's system prompt: built-ins first, then custom (DB)."""
+
+    if not persona_id:
+        return None
+    builtin = get_persona(persona_id)
+    if builtin:
+        return builtin.system_prompt
+    async with SessionLocal() as session:
+        row = await PersonaRepository(session).get(persona_id)
+        return row.system_prompt if row else None
 
 
 async def _web_context(query: str) -> tuple[str | None, list[dict]]:

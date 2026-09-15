@@ -49,6 +49,28 @@ export const api = {
 
   listPersonas: () => request<Persona[]>("/api/personas"),
 
+  createPersona: (body: {
+    label: string;
+    description: string;
+    system_prompt: string;
+  }) =>
+    request<Persona>("/api/personas", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  updatePersona: (
+    id: string,
+    patch: { label?: string; description?: string; system_prompt?: string },
+  ) =>
+    request<Persona>(`/api/personas/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+
+  deletePersona: (id: string) =>
+    request<void>(`/api/personas/${id}`, { method: "DELETE" }),
+
   listConversations: () => request<Conversation[]>("/api/conversations"),
 
   getConversation: (id: string) =>

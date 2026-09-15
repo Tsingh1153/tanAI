@@ -77,6 +77,20 @@ class PersonaOut(BaseModel):
     id: str
     label: str
     description: str
+    system_prompt: str
+    builtin: bool
+
+
+class PersonaCreate(BaseModel):
+    label: str
+    description: str = ""
+    system_prompt: str
+
+
+class PersonaUpdate(BaseModel):
+    label: str | None = None
+    description: str | None = None
+    system_prompt: str | None = None
 
 
 class ModelInfo(BaseModel):

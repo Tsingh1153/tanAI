@@ -76,6 +76,55 @@ def test_persona_prompt_injected() -> None:
         assert "Corporate Finance" not in out
 
 
+def test_custom_persona_crud_and_injection() -> None:
+    with TestClient(app) as client:
+        _install()
+
+        # Create a custom persona.
+        created = client.post(
+            "/api/personas",
+            json={
+                "label": "Pirate",
+                "description": "Talks like a pirate",
+                "system_prompt": "You are a swashbuckling pirate. Say ARRR often.",
+            },
+        ).json()
+        assert created["builtin"] is False
+        pid = created["id"]
+
+        # It appears in the list alongside built-ins.
+        listed = client.get("/api/personas").json()
+        assert any(p["id"] == pid and not p["builtin"] for p in listed)
+        assert any(p["builtin"] for p in listed)
+
+        # Its prompt is injected into a chat turn.
+        conv = client.post("/api/conversations", json={}).json()
+        with client.websocket_connect(f"/ws/chat/{conv['id']}") as ws:
+            ws.send_json({"content": "hi", "persona": pid})
+            out = _collect(ws)
+        assert "swashbuckling pirate" in out
+
+        # Editing changes the injected prompt.
+        client.patch(
+            f"/api/personas/{pid}",
+            json={"system_prompt": "You are a formal butler."},
+        )
+        with client.websocket_connect(f"/ws/chat/{conv['id']}") as ws:
+            ws.send_json({"content": "hi", "persona": pid})
+            out = _collect(ws)
+        assert "formal butler" in out
+
+        # Built-ins are read-only and cannot be deleted.
+        assert (
+            client.patch("/api/personas/personal-finance", json={}).status_code == 400
+        )
+        assert client.delete("/api/personas/personal-finance").status_code == 400
+
+        # Delete the custom persona.
+        assert client.delete(f"/api/personas/{pid}").status_code == 204
+        assert all(p["id"] != pid for p in client.get("/api/personas").json())
+
+
 def _collect(ws) -> str:
     tokens: list[str] = []
     while True:

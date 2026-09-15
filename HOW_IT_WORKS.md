@@ -408,12 +408,14 @@ model write.** Master that one move and you can add "capabilities" endlessly.
 The finance "modes" (Personal Finance, Markets & Investing, Corporate Finance,
 Finance Tutor) are the purest example of section 4.1's idea. A persona is nothing
 but a **system prompt** — a paragraph telling the model who to be and how to
-answer. The backend keeps them in one file (`app/personas.py`) and serves them at
-`/api/personas`; the frontend shows them as tabs. When you pick a tab, its id
-rides along with your message, and the WebSocket handler prepends that persona's
-prompt to the same "system primes" list that memory, RAG, and web search feed
-into. The model isn't retrained or swapped — it just receives different
-instructions, so it *behaves* like a finance tutor.
+answer. Built-in personas live in one file (`app/personas.py`); personas you
+create in the UI are rows in a `personas` table. Both are served from
+`/api/personas` and shown as tabs. When you pick a tab, its id rides along with
+your message, and the WebSocket handler resolves that id (built-in *or* database)
+to a prompt and prepends it to the same "system primes" list that memory, RAG, and
+web search feed into. The model isn't retrained or swapped — it just receives
+different instructions, so it *behaves* like a finance tutor (or whatever mode you
+authored).
 
 This is why "specializing" a modern LLM app usually means **prompting + retrieval**,
 not building a neural network. Pair a persona with the bundled finance corpus

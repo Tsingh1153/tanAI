@@ -80,7 +80,9 @@ pip install --quiet --upgrade pip
 pip install --quiet -r requirements.txt
 
 echo "▶ Launching backend on http://$BACKEND_HOST:$BACKEND_PORT"
-uvicorn app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT" &
+# --reload so backend code changes are picked up without a manual restart,
+# matching the frontend dev server (prevents stale-backend surprises).
+uvicorn app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT" --reload &
 BACKEND_PID=$!
 
 # --- Frontend ------------------------------------------------------------- #

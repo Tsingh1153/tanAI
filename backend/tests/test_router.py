@@ -43,6 +43,24 @@ def test_choose_prefers_specialist() -> None:
     assert choose_model("general", _INSTALLED, "qwen2.5:7b").model == "qwen2.5:7b"
 
 
+def test_route_carries_previous_specialty() -> None:
+    # A generic follow-up alone routes to general/default...
+    assert route("now optimize it", False, 5, _INSTALLED, "qwen2.5:7b").model == (
+        "qwen2.5:7b"
+    )
+    # ...but with a code-flavored previous turn it stays on the coder model.
+    r = route(
+        "now optimize it",
+        False,
+        5,
+        _INSTALLED,
+        "qwen2.5:7b",
+        prev_content="write a python function to sort a list",
+    )
+    assert r.model == "qwen2.5-coder:7b"
+    assert r.category == "code"
+
+
 def test_choose_handles_empty() -> None:
     assert choose_model("code", [], "qwen2.5:7b") is None
     # A category with no matching model falls back to default, then first available.

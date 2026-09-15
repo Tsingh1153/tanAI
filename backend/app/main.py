@@ -1140,6 +1140,7 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                     estimate_tokens(content),
                     available,
                     settings.default_model,
+                    prev_content=await _last_user_content(conversation_id),
                 )
                 if chosen:
                     model = chosen.model
@@ -1296,6 +1297,17 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                 )
     except WebSocketDisconnect:
         return
+
+
+async def _last_user_content(conversation_id: str) -> str | None:
+    """Most recent prior user message, for context-aware Auto routing."""
+
+    async with SessionLocal() as session:
+        rows = await MessageRepository(session).list_for_conversation(conversation_id)
+    for row in reversed(rows):
+        if row.role == "user":
+            return row.content
+    return None
 
 
 async def _available_models(registry: ProviderRegistry) -> list[tuple[str, str]]:

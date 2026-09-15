@@ -103,6 +103,13 @@ def route(
     approx_tokens: int,
     available: list[tuple[str, str]],
     default_model: str,
+    prev_content: str | None = None,
 ) -> Route | None:
     category = classify(content, has_images, approx_tokens)
+    # A terse follow-up ("now optimize it") classifies as general; fall back to the
+    # previous turn's specialty so the conversation stays on the right model.
+    if category == "general" and prev_content:
+        prev = classify(prev_content, False, 0)
+        if prev in ("code", "math"):
+            category = prev
     return choose_model(category, available, default_model)

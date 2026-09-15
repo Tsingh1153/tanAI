@@ -11,6 +11,24 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.4.0] — 2026-09-15
+
+### Changed
+- **Cleaner composer toolbar** — the chip cluster is now four core toggles
+  (Documents, Memory, Web, Agent) plus a single **More** menu holding the manage
+  panels, webcam, image, and read-aloud actions. Documents shows a count badge.
+- **Refined streaming animation** — the bare blinking block is replaced by a soft
+  pulsing caret, and a staggered three-dot "thinking" indicator shows before the
+  first token arrives.
+
+### Added
+- **Boot splash** — a branded launch screen (floating logo, halo rings, cycling
+  status) shown while the backend/model warms up, fading out once health resolves.
+- **Context-aware Auto routing** — a terse follow-up ("now optimize it") now
+  inherits the previous turn's specialty, so routing stays on the right model.
+
+---
+
 ## [1.3.0] — 2026-09-15
 
 ### Added

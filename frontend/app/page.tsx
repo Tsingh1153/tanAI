@@ -2,20 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  BookOpen,
-  Brain,
-  Camera,
   Code2,
-  FolderOpen,
   GraduationCap,
-  Globe,
-  ImageIcon,
   Lightbulb,
-  ListChecks,
   PenLine,
   Settings2,
-  Volume2,
-  Wrench,
 } from "lucide-react";
 import { speak, stopSpeaking } from "@/lib/tts";
 import clsx from "clsx";
@@ -33,6 +24,8 @@ import { ImagePanel } from "@/components/ImagePanel";
 import { Logo } from "@/components/Logo";
 import { PersonaTabs } from "@/components/PersonaTabs";
 import { PersonasPanel } from "@/components/PersonasPanel";
+import { Toolbar } from "@/components/Toolbar";
+import { BootSplash } from "@/components/BootSplash";
 import { useChat } from "@/lib/useChat";
 import { api } from "@/lib/api";
 import type { Conversation, Health, ModelInfo, Persona } from "@/lib/types";
@@ -333,6 +326,7 @@ export default function Home() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
+      <BootSplash ready={!!health || !!loadError} />
       <Sidebar
         conversations={conversations}
         activeId={activeId}
@@ -443,81 +437,27 @@ export default function Home() {
         )}
 
         {!loadError && (
-          <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-2 px-4 pt-1">
-            <Chip
-              active={useRag && availableDocs > 0}
-              disabled={availableDocs === 0}
-              onClick={() => setUseRag((v) => !v)}
-              icon={<BookOpen size={14} />}
-              label="Documents"
-              title={
-                availableDocs === 0
-                  ? "Upload documents to enable"
-                  : "Answer from this chat's documents"
-              }
-            />
-            <Chip
-              onClick={() => setDocsOpen(true)}
-              icon={<FolderOpen size={14} />}
-              label={availableDocs > 0 ? String(availableDocs) : undefined}
-              title="Manage this chat's documents"
-            />
-            <span className="mx-0.5 h-4 w-px bg-border" />
-            <Chip
-              active={useMemory}
-              onClick={() => setUseMemory((v) => !v)}
-              icon={<Brain size={14} />}
-              label="Memory"
-              title={useMemory ? "Memory on" : "Memory off"}
-            />
-            <Chip
-              onClick={() => setMemoryOpen(true)}
-              icon={<ListChecks size={14} />}
-              title="Manage saved memories"
-            />
-            <span className="mx-0.5 h-4 w-px bg-border" />
-            <Chip
-              active={useWeb}
-              onClick={() => setUseWeb((v) => !v)}
-              icon={<Globe size={14} />}
-              label="Web"
-              title={
-                useWeb
-                  ? "Web search on — answers use current info"
-                  : "Search the web for current info"
-              }
-            />
-            <Chip
-              active={useAgent}
-              onClick={() => setUseAgent((v) => !v)}
-              icon={<Wrench size={14} />}
-              label="Agent"
-              title={useAgent ? "Agent on — can use tools" : "Agent off"}
-            />
-            <Chip
-              onClick={() => setWebcamOpen(true)}
-              icon={<Camera size={14} />}
-              label="Webcam"
-              title="Live webcam analysis"
-            />
-            <Chip
-              onClick={() => setImageOpen(true)}
-              icon={<ImageIcon size={14} />}
-              label="Image"
-              title="Generate an image"
-            />
-            <Chip
-              active={speakReplies}
-              onClick={() => {
-                const next = !speakReplies;
-                setSpeakReplies(next);
-                if (!next) stopSpeaking();
-              }}
-              icon={<Volume2 size={14} />}
-              label="Speak"
-              title="Read replies aloud"
-            />
-          </div>
+          <Toolbar
+            useRag={useRag}
+            availableDocs={availableDocs}
+            onToggleRag={() => setUseRag((v) => !v)}
+            useMemory={useMemory}
+            onToggleMemory={() => setUseMemory((v) => !v)}
+            useWeb={useWeb}
+            onToggleWeb={() => setUseWeb((v) => !v)}
+            useAgent={useAgent}
+            onToggleAgent={() => setUseAgent((v) => !v)}
+            speakReplies={speakReplies}
+            onToggleSpeak={() => {
+              const next = !speakReplies;
+              setSpeakReplies(next);
+              if (!next) stopSpeaking();
+            }}
+            onManageDocs={() => setDocsOpen(true)}
+            onManageMemory={() => setMemoryOpen(true)}
+            onWebcam={() => setWebcamOpen(true)}
+            onImage={() => setImageOpen(true)}
+          />
         )}
 
         {!loadError && (
@@ -570,40 +510,6 @@ export default function Home() {
         onChange={refreshPersonas}
       />
     </div>
-  );
-}
-
-// Compact toolbar chip used above the composer.
-function Chip({
-  icon,
-  label,
-  onClick,
-  active,
-  disabled,
-  title,
-}: {
-  icon: React.ReactNode;
-  label?: string;
-  onClick: () => void;
-  active?: boolean;
-  disabled?: boolean;
-  title?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={clsx(
-        "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors disabled:opacity-40",
-        active
-          ? "border-accent bg-accent text-accent-fg"
-          : "border-border bg-surface text-content hover:bg-elevated",
-      )}
-    >
-      {icon}
-      {label && <span>{label}</span>}
-    </button>
   );
 }
 

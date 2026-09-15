@@ -152,9 +152,13 @@ function MessageBubbleImpl({
                 </span>
               </div>
             )}
-            <span className={clsx(streaming && "stream-caret")}>
-              <Markdown content={message.content || ""} />
-            </span>
+            {streaming && !message.content ? (
+              <TypingIndicator />
+            ) : (
+              <span className={clsx(streaming && "stream-caret")}>
+                <Markdown content={message.content || ""} />
+              </span>
+            )}
             {message.sources && message.sources.length > 0 && (
               <Sources sources={message.sources} />
             )}
@@ -200,6 +204,16 @@ function MessageBubbleImpl({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-1.5 py-1.5" aria-label="Thinking">
+      <span className="typing-dot" style={{ animationDelay: "0ms" }} />
+      <span className="typing-dot" style={{ animationDelay: "150ms" }} />
+      <span className="typing-dot" style={{ animationDelay: "300ms" }} />
     </div>
   );
 }

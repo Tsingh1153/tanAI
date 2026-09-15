@@ -5,6 +5,13 @@ import { Check, ChevronDown, Shuffle } from "lucide-react";
 import clsx from "clsx";
 import type { ModelInfo } from "@/lib/types";
 
+function formatSize(bytes?: number | null): string | null {
+  if (!bytes) return null;
+  const gb = bytes / 1e9;
+  if (gb >= 1) return `${gb.toFixed(1)} GB`;
+  return `${Math.round(bytes / 1e6)} MB`;
+}
+
 // Custom model picker (button + popover). Grouped by provider, with a checkmark
 // on the active model. A custom menu is used instead of a native <select> so it
 // renders reliably and matches the app's theme, including on macOS.
@@ -122,7 +129,12 @@ export function ModelSelector({
                           selected ? "text-accent" : "opacity-0",
                         )}
                       />
-                      <span className="truncate">{m.name}</span>
+                      <span className="flex-1 truncate">{m.name}</span>
+                      {formatSize(m.size) && (
+                        <span className="shrink-0 text-[11px] text-muted">
+                          {formatSize(m.size)}
+                        </span>
+                      )}
                     </button>
                   );
                 })}

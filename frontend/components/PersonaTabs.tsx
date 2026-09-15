@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import { SlidersHorizontal } from "lucide-react";
 import type { Persona } from "@/lib/types";
+import { personaColor } from "@/lib/personaStyle";
 
 // Horizontal tabs to switch the assistant's domain persona. "General" (id null)
 // is the default and sends no persona, leaving tanAI unspecialized. The gear
@@ -25,6 +26,7 @@ export function PersonaTabs({
       <div className="flex flex-wrap items-center gap-1.5">
         <Tab
           label="General"
+          color={personaColor(null)}
           active={active === null}
           onClick={() => onChange(null)}
         />
@@ -32,6 +34,7 @@ export function PersonaTabs({
           <Tab
             key={p.id}
             label={p.label}
+            color={personaColor(p.id)}
             active={active === p.id}
             title={p.description}
             onClick={() => onChange(p.id)}
@@ -57,11 +60,13 @@ export function PersonaTabs({
 
 function Tab({
   label,
+  color,
   active,
   onClick,
   title,
 }: {
   label: string;
+  color: string;
   active: boolean;
   onClick: () => void;
   title?: string;
@@ -70,13 +75,18 @@ function Tab({
     <button
       onClick={onClick}
       title={title}
+      style={active ? { backgroundColor: color, color: "white" } : undefined}
       className={clsx(
-        "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-        active
-          ? "bg-accent text-accent-fg"
-          : "text-muted hover:bg-elevated hover:text-content",
+        "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+        !active && "text-muted hover:bg-elevated hover:text-content",
       )}
     >
+      {!active && (
+        <span
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+      )}
       {label}
     </button>
   );

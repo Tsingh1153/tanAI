@@ -1,13 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Code2,
-  GraduationCap,
-  Lightbulb,
-  PenLine,
-  Settings2,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Settings2 } from "lucide-react";
 import { speak, stopSpeaking } from "@/lib/tts";
 import clsx from "clsx";
 import { Sidebar } from "@/components/Sidebar";
@@ -26,8 +20,10 @@ import { PersonaTabs } from "@/components/PersonaTabs";
 import { PersonasPanel } from "@/components/PersonasPanel";
 import { Toolbar } from "@/components/Toolbar";
 import { BootSplash } from "@/components/BootSplash";
+import { CommandPalette, type Command } from "@/components/CommandPalette";
 import { useChat } from "@/lib/useChat";
 import { api } from "@/lib/api";
+import { personaColor, startersFor } from "@/lib/personaStyle";
 import type { Conversation, Health, ModelInfo, Persona } from "@/lib/types";
 
 export default function Home() {
@@ -52,6 +48,7 @@ export default function Home() {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [persona, setPersona] = useState<string | null>(null);
   const [personasOpen, setPersonasOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const prevStreamingRef = useRef(false);
 
   const {
@@ -270,19 +267,163 @@ export default function Home() {
     ],
   );
 
-  // Keyboard shortcuts: ⌘/Ctrl+K new chat, Esc stops generation.
+  // Keyboard shortcuts: ⌘/Ctrl+K command palette, Esc stops generation.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        handleNew();
+        setPaletteOpen((v) => !v);
       } else if (e.key === "Escape" && streaming) {
         stop();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handleNew, streaming, stop]);
+  }, [streaming, stop]);
+
+  // Command palette actions — one source for navigation and toggles.
+  const commands = useMemo<Command[]>(() => {
+    const cmds: Command[] = [
+      {
+        id: "new-chat",
+        label: "New chat",
+        group: "Actions",
+        hint: "⌘K",
+        run: handleNew,
+      },
+    ];
+    for (const c of conversations.slice(0, 20)) {
+      cmds.push({
+        id: `chat-${c.id}`,
+        label: c.title || "Untitled chat",
+        group: "Jump to chat",
+        run: () => setActiveId(c.id),
+      });
+    }
+    cmds.push({
+      id: "model-auto",
+      label: "Auto (route each message)",
+      group: "Model",
+      active: model === "auto",
+      run: () => {
+        setProvider("auto");
+        setModel("auto");
+      },
+    });
+    for (const m of models) {
+      cmds.push({
+        id: `model-${m.provider}-${m.name}`,
+        label: m.name,
+        group: "Model",
+        hint: m.provider_label,
+        active: model === m.name && provider === m.provider,
+        run: () => {
+          setProvider(m.provider);
+          setModel(m.name);
+        },
+      });
+    }
+    cmds.push({
+      id: "persona-general",
+      label: "General",
+      group: "Persona",
+      active: persona === null,
+      run: () => setPersona(null),
+    });
+    for (const p of personas) {
+      cmds.push({
+        id: `persona-${p.id}`,
+        label: p.label,
+        group: "Persona",
+        active: persona === p.id,
+        run: () => setPersona(p.id),
+      });
+    }
+    cmds.push(
+      {
+        id: "toggle-memory",
+        label: "Toggle Memory",
+        group: "Toggle",
+        active: useMemory,
+        run: () => setUseMemory((v) => !v),
+      },
+      {
+        id: "toggle-web",
+        label: "Toggle Web search",
+        group: "Toggle",
+        active: useWeb,
+        run: () => setUseWeb((v) => !v),
+      },
+      {
+        id: "toggle-agent",
+        label: "Toggle Agent",
+        group: "Toggle",
+        active: useAgent,
+        run: () => setUseAgent((v) => !v),
+      },
+    );
+    if (availableDocs > 0) {
+      cmds.push({
+        id: "toggle-docs",
+        label: "Toggle Documents",
+        group: "Toggle",
+        active: useRag,
+        run: () => setUseRag((v) => !v),
+      });
+    }
+    cmds.push(
+      {
+        id: "open-personas",
+        label: "Manage personas",
+        group: "Open",
+        run: () => setPersonasOpen(true),
+      },
+      {
+        id: "open-docs",
+        label: "Manage documents",
+        group: "Open",
+        run: () => setDocsOpen(true),
+      },
+      {
+        id: "open-memory",
+        label: "Manage memory",
+        group: "Open",
+        run: () => setMemoryOpen(true),
+      },
+      {
+        id: "open-image",
+        label: "Generate image",
+        group: "Open",
+        run: () => setImageOpen(true),
+      },
+      {
+        id: "open-webcam",
+        label: "Webcam",
+        group: "Open",
+        run: () => setWebcamOpen(true),
+      },
+      {
+        id: "open-settings",
+        label: "Settings",
+        group: "Open",
+        run: () => setSettingsOpen(true),
+      },
+    );
+    return cmds;
+  }, [
+    handleNew,
+    conversations,
+    models,
+    model,
+    provider,
+    personas,
+    persona,
+    useMemory,
+    useWeb,
+    useAgent,
+    useRag,
+    availableDocs,
+  ]);
 
   const offline = health && !health.provider_online;
 
@@ -399,7 +540,12 @@ export default function Home() {
             </div>
           </div>
         ) : messages.length === 0 && !activeId ? (
-          <EmptyState onPrompt={handleSend} disabled={!!offline} />
+          <EmptyState
+            onPrompt={handleSend}
+            disabled={!!offline}
+            personaId={persona}
+            personaLabel={personas.find((p) => p.id === persona)?.label ?? null}
+          />
         ) : (
           <MessageList
             messages={messages}
@@ -509,17 +655,27 @@ export default function Home() {
         personas={personas}
         onChange={refreshPersonas}
       />
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        commands={commands}
+      />
     </div>
   );
 }
 
-// Welcome / zero-state: a warm, time-aware greeting and starter cards.
+// Welcome / zero-state: a warm, time-aware greeting and persona-aware starters.
 function EmptyState({
   onPrompt,
   disabled,
+  personaId,
+  personaLabel,
 }: {
   onPrompt: (text: string) => void;
   disabled: boolean;
+  personaId: string | null;
+  personaLabel: string | null;
 }) {
   const hour = new Date().getHours();
   const greeting =
@@ -531,12 +687,8 @@ function EmptyState({
           ? "Good afternoon"
           : "Good evening";
 
-  const starters = [
-    { icon: Lightbulb, text: "Explain quantum entanglement simply" },
-    { icon: Code2, text: "Write a Python function to debounce calls" },
-    { icon: PenLine, text: "Draft a friendly out-of-office email" },
-    { icon: GraduationCap, text: "Summarize the causes of World War I" },
-  ];
+  const starters = startersFor(personaId);
+  const dot = personaColor(personaId);
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-4">
@@ -547,27 +699,34 @@ function EmptyState({
         {greeting}. How can I help?
       </h1>
       <p className="mb-9 animate-rise text-sm text-muted">
-        A fully local assistant — your conversations stay on your machine.
+        {personaLabel
+          ? `${personaLabel} mode — grounded, local, and private.`
+          : "A fully local assistant — your conversations stay on your machine."}
       </p>
       <div className="grid w-full max-w-2xl grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {starters.map((s, i) => {
-          const Icon = s.icon;
-          return (
-            <button
-              key={s.text}
-              disabled={disabled}
-              onClick={() => onPrompt(s.text)}
-              style={{ animationDelay: `${i * 60}ms` }}
-              className="group flex animate-rise items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left text-sm text-content shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-md disabled:opacity-50"
-            >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
-                <Icon size={16} />
-              </span>
-              {s.text}
-            </button>
-          );
-        })}
+        {starters.map((text, i) => (
+          <button
+            key={text}
+            disabled={disabled}
+            onClick={() => onPrompt(text)}
+            style={{ animationDelay: `${i * 60}ms` }}
+            className="group flex animate-rise items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left text-sm text-content shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-md disabled:opacity-50"
+          >
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: dot }}
+            />
+            {text}
+          </button>
+        ))}
       </div>
+      <p className="mt-7 animate-rise text-[11px] text-muted/70">
+        Press{" "}
+        <kbd className="rounded border border-border bg-elevated px-1 py-0.5 text-[10px]">
+          ⌘K
+        </kbd>{" "}
+        for commands
+      </p>
     </div>
   );
 }

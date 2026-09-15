@@ -11,6 +11,26 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.5.0] — 2026-09-15
+
+### Added
+- **Command palette (⌘K)** — one searchable palette to jump between chats, switch
+  model or persona, toggle modes, and open any panel. Keeps the visible UI minimal.
+- **Persona-aware starters** — the empty-state suggestions now match the active
+  persona (finance prompts in a finance mode), with a persona-colored accent.
+- **Jump-to-latest pill** — a floating control appears when you scroll up during a
+  long or streaming reply; near-bottom autoscroll is unchanged.
+
+### Changed
+- **Persona color accents** — each persona has a stable hue shown on its tab (and
+  the empty-state dots), so the active mode is glanceable.
+- **Model selector shows size** — each model lists its on-disk size (helpful on
+  limited RAM).
+- **Quieter disclaimer** — shrunk to muted micro-text so it stops competing with
+  the composer.
+
+---
+
 ## [1.4.0] — 2026-09-15
 
 ### Changed

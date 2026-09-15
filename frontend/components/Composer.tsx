@@ -213,9 +213,8 @@ export function Composer({
               : voiceError}
         </p>
       )}
-      <p className="mt-2 text-center text-xs text-muted">
-        Runs locally. Responses may be inaccurate — verify important
-        information.
+      <p className="mt-2 text-center text-[10px] text-muted/60">
+        Local model — may be inaccurate. Verify important info.
       </p>
     </div>
   );

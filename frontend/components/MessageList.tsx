@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowDown } from "lucide-react";
 import { MessageBubble } from "./MessageBubble";
 import type { Message } from "@/lib/types";
 
-// Scrollable transcript. Auto-scrolls to the newest content while streaming,
-// but only if the user is already near the bottom (so scrolling up to read
-// history is not fought by the autoscroll).
+// Scrollable transcript. Auto-scrolls to the newest content while streaming, but
+// only when the user is already near the bottom; otherwise a "jump to latest"
+// pill appears so scrolling up to read history is never fought.
 export function MessageList({
   messages,
   streaming,
@@ -26,6 +27,7 @@ export function MessageList({
   })();
   const endRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [atBottom, setAtBottom] = useState(true);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -34,28 +36,56 @@ export function MessageList({
     if (nearBottom) endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming]);
 
+  const onScroll = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 160);
+  };
+
+  const jump = () =>
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+
   // Pass stable references so memoized bubbles don't re-render every token.
   // (onEdit takes the message id, so it's the same function for every row.)
   const editHandler = streaming ? undefined : onEdit;
 
   return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto">
-      <div className="mx-auto flex max-w-3xl flex-col gap-7 px-4 py-8">
-        {messages.map((m, i) => (
-          <MessageBubble
-            key={m.id}
-            message={m}
-            streaming={
-              streaming && i === messages.length - 1 && m.role === "assistant"
-            }
-            onEdit={editHandler}
-            onRegenerate={
-              i === lastAssistantIndex && !streaming ? onRegenerate : undefined
-            }
-          />
-        ))}
-        <div ref={endRef} />
+    <div className="relative flex-1 overflow-hidden">
+      <div
+        ref={containerRef}
+        onScroll={onScroll}
+        className="h-full overflow-y-auto"
+      >
+        <div className="mx-auto flex max-w-3xl flex-col gap-7 px-4 py-8">
+          {messages.map((m, i) => (
+            <MessageBubble
+              key={m.id}
+              message={m}
+              streaming={
+                streaming && i === messages.length - 1 && m.role === "assistant"
+              }
+              onEdit={editHandler}
+              onRegenerate={
+                i === lastAssistantIndex && !streaming
+                  ? onRegenerate
+                  : undefined
+              }
+            />
+          ))}
+          <div ref={endRef} />
+        </div>
       </div>
+
+      {!atBottom && (
+        <button
+          onClick={jump}
+          className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-surface/90 px-3 py-1.5 text-xs text-content shadow-lg backdrop-blur transition-colors hover:bg-elevated"
+          aria-label="Jump to latest"
+        >
+          <ArrowDown size={14} />
+          {streaming ? "Streaming" : "Latest"}
+        </button>
+      )}
     </div>
   );
 }

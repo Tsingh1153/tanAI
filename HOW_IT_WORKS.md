@@ -403,6 +403,25 @@ runs with a timeout, and every call is logged.
 Notice the recurring shape: **gather relevant text → put it in the prompt → let the
 model write.** Master that one move and you can add "capabilities" endlessly.
 
+### 4.6 Personas — specializing the model without retraining
+
+The finance "modes" (Personal Finance, Markets & Investing, Corporate Finance,
+Finance Tutor) are the purest example of section 4.1's idea. A persona is nothing
+but a **system prompt** — a paragraph telling the model who to be and how to
+answer. The backend keeps them in one file (`app/personas.py`) and serves them at
+`/api/personas`; the frontend shows them as tabs. When you pick a tab, its id
+rides along with your message, and the WebSocket handler prepends that persona's
+prompt to the same "system primes" list that memory, RAG, and web search feed
+into. The model isn't retrained or swapped — it just receives different
+instructions, so it *behaves* like a finance tutor.
+
+This is why "specializing" a modern LLM app usually means **prompting + retrieval**,
+not building a neural network. Pair a persona with the bundled finance corpus
+(loaded via `scripts/seed_corpus.py`) and you get a specialist that both talks and
+cites like one — for a fraction of the effort of fine-tuning. Every finance persona
+also carries an education-not-advice guardrail, so the model explains concepts
+without posing as a licensed advisor.
+
 ---
 
 ## 5. The frontend

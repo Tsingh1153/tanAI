@@ -92,6 +92,12 @@ export interface ConversationWithMessages extends Conversation {
   messages: Message[];
 }
 
+export interface Persona {
+  id: string;
+  label: string;
+  description: string;
+}
+
 export interface ModelInfo {
   name: string;
   provider: string;
@@ -167,4 +173,5 @@ export interface SendOptions {
   agent?: boolean;
   images?: string[]; // data URLs
   regenerate?: boolean; // re-run without persisting a new user turn
+  persona?: string; // active domain persona id, or undefined for General
 }

@@ -9,6 +9,7 @@ import type {
   MCPServerInfo,
   MemoryInfo,
   ModelInfo,
+  Persona,
   PluginInfo,
   ProviderInfo,
   RetrievedSource,
@@ -45,6 +46,8 @@ export const api = {
   health: () => request<Health>("/api/health"),
 
   listModels: () => request<ModelInfo[]>("/api/models"),
+
+  listPersonas: () => request<Persona[]>("/api/personas"),
 
   listConversations: () => request<Conversation[]>("/api/conversations"),
 

@@ -31,9 +31,10 @@ import { ApprovalPrompt } from "@/components/ApprovalPrompt";
 import { WebcamPanel } from "@/components/WebcamPanel";
 import { ImagePanel } from "@/components/ImagePanel";
 import { Logo } from "@/components/Logo";
+import { PersonaTabs } from "@/components/PersonaTabs";
 import { useChat } from "@/lib/useChat";
 import { api } from "@/lib/api";
-import type { Conversation, Health, ModelInfo } from "@/lib/types";
+import type { Conversation, Health, ModelInfo, Persona } from "@/lib/types";
 
 export default function Home() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -54,6 +55,8 @@ export default function Home() {
   const [webcamOpen, setWebcamOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
   const [speakReplies, setSpeakReplies] = useState(false);
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [persona, setPersona] = useState<string | null>(null);
   const prevStreamingRef = useRef(false);
 
   const {
@@ -77,8 +80,18 @@ export default function Home() {
       useMemory,
       useWeb,
       agent: useAgent,
+      persona: persona ?? undefined,
     }),
-    [model, provider, useRag, availableDocs, useMemory, useWeb, useAgent],
+    [
+      model,
+      provider,
+      useRag,
+      availableDocs,
+      useMemory,
+      useWeb,
+      useAgent,
+      persona,
+    ],
   );
 
   // Stable handlers for message edit / regenerate (keeps memoized bubbles from
@@ -182,6 +195,11 @@ export default function Home() {
       } catch {
         /* Ollama may be offline; model list stays empty. */
       }
+      try {
+        setPersonas(await api.listPersonas());
+      } catch {
+        /* personas are optional; General mode still works */
+      }
       const list = await refreshConversations();
       if (list.length > 0) setActiveId(list[0].id);
     })();
@@ -229,6 +247,7 @@ export default function Home() {
         useMemory,
         useWeb,
         agent: useAgent,
+        persona: persona ?? undefined,
         images: images.length ? images : undefined,
       });
       // Refresh titles/order shortly after the turn begins.
@@ -243,6 +262,7 @@ export default function Home() {
       useMemory,
       useWeb,
       useAgent,
+      persona,
       send,
       refreshConversations,
     ],
@@ -400,6 +420,16 @@ export default function Home() {
             onApprove={() => approve(true)}
             onDeny={() => approve(false)}
           />
+        )}
+
+        {!loadError && personas.length > 0 && (
+          <div className="pt-2">
+            <PersonaTabs
+              personas={personas}
+              active={persona}
+              onChange={setPersona}
+            />
+          </div>
         )}
 
         {!loadError && (

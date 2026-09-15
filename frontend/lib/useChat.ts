@@ -92,6 +92,7 @@ export function useChat(conversationId: string | null): UseChat {
         agent,
         images,
         regenerate,
+        persona,
       } = options;
 
       const assistantId = tempId();
@@ -131,6 +132,7 @@ export function useChat(conversationId: string | null): UseChat {
             agent: !!agent,
             images,
             regenerate: !!regenerate,
+            persona,
           }),
         );
 

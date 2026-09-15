@@ -54,6 +54,14 @@ at a remote API yourself.
   create images via a pluggable backend: a local Stable Diffusion server
   (AUTOMATIC1111 `--api`, SD.Next, Forge) or an OpenAI-compatible images API.
   Configure it in Settings / `backend/.env`.
+- **Finance personas** — a tab bar switches the assistant into a domain mode:
+  **Personal Finance**, **Markets & Investing**, **Corporate Finance**, or
+  **Finance Tutor** (with **General** as the unspecialized default). Each mode
+  injects a domain system prompt, and every finance mode carries an
+  education-not-advice guardrail (see "Why the advice guardrail" below). A bundled
+  **finance corpus** (`backend/corpus/finance/`) can be loaded as global RAG
+  documents via `scripts/seed_corpus.py` so the personas are grounded out of the
+  box. Personas are served from `/api/personas`, so adding more is a one-file edit.
 - **Web search** — flip on **Web** and answers are grounded in live search
   results (DuckDuckGo by default, no key; Brave/Tavily/SearXNG optional) with
   clickable citations. Also available as a `web_search` agent tool.
@@ -221,6 +229,37 @@ tanAI/
   by a fake provider in tests.
 - **Async end to end.** Async SQLAlchemy + httpx streaming keep the event loop free
   during long generations.
+- **Personas are data, not code paths.** A persona is just a system prompt fetched
+  from `/api/personas` and prepended to the turn's system primes — the same
+  mechanism RAG, memory, and web search already use. Switching modes changes the
+  prompt, nothing else, so new domains cost one entry in `backend/app/personas.py`.
+
+### Why the advice guardrail
+
+Every finance persona appends an education-not-advice instruction: the assistant
+explains concepts and trade-offs but does not give personalized financial,
+investment, tax, or legal advice, name specific securities to buy or sell, or
+predict prices. This keeps a locally-run model from overstepping into regulated
+advice, and mirrors how a responsible human would frame the same information.
+
+---
+
+## Loading the finance corpus
+
+The finance personas work on their own, but they answer better when grounded in
+documents. A small, original reference corpus ships in `backend/corpus/finance/`
+(personal finance, markets, corporate finance, and a glossary). Load it once,
+with the backend running:
+
+```bash
+cd backend && source .venv/bin/activate
+python ../scripts/seed_corpus.py
+```
+
+This uploads each file as a **global** document (available in every chat). Enable
+**Documents** in a chat to ground answers in them. Add your own PDFs/notes to that
+folder — or prefer official public sources like investor.gov, irs.gov, and SEC
+EDGAR — and re-run the script; it skips anything already indexed.
 
 ---
 

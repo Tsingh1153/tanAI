@@ -73,6 +73,12 @@ class ChatRequest(BaseModel):
     provider: str | None = None
 
 
+class PersonaOut(BaseModel):
+    id: str
+    label: str
+    description: str
+
+
 class ModelInfo(BaseModel):
     name: str
     provider: str

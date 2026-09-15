@@ -42,6 +42,7 @@ from .database import SessionLocal, get_session, init_db
 from .hardware import detect_hardware
 from .imagegen import ImageGenError, build_image_generator
 from .memory import MemoryService
+from .personas import PERSONAS, get_persona
 from .providers import (
     ChatMessage,
     ProviderRegistry,
@@ -80,6 +81,7 @@ from .schemas import (
     MemoryUpdate,
     MessageOut,
     ModelInfo,
+    PersonaOut,
     PluginInfo,
     ProviderCreate,
     ProviderOut,
@@ -242,6 +244,13 @@ async def health(
         indexed_chunks=indexed,
         hardware=detect_hardware().label,
     )
+
+
+@app.get("/api/personas", response_model=list[PersonaOut])
+async def list_personas() -> list[PersonaOut]:
+    return [
+        PersonaOut(id=p.id, label=p.label, description=p.description) for p in PERSONAS
+    ]
 
 
 @app.get("/api/models", response_model=list[ModelInfo])
@@ -1040,6 +1049,7 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                 continue
             model = message.get("model")
             provider_name = message.get("provider")
+            persona = get_persona(message.get("persona"))
             use_rag = bool(message.get("use_rag"))
             document_ids = message.get("document_ids") or None
             images = message.get("images") or None
@@ -1060,6 +1070,7 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                     use_memory,
                     registry,
                     embeddings,
+                    persona.system_prompt if persona else None,
                 )
                 continue
 
@@ -1074,6 +1085,8 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                 await websocket.send_json({"type": "start"})
 
                 system_primes: list[str] = []
+                if persona:
+                    system_primes.append(persona.system_prompt)
 
                 # Long-term memory recall (best-effort; never blocks the answer).
                 if use_memory:
@@ -1265,6 +1278,7 @@ async def _run_agent_turn(
     use_memory: bool,
     registry: ProviderRegistry,
     embeddings: EmbeddingProvider,
+    persona_prompt: str | None = None,
 ) -> None:
     """Run one agentic turn: tool loop with live events and approval gating."""
 
@@ -1285,8 +1299,11 @@ async def _run_agent_turn(
         history_rows = await messages_repo.list_for_conversation(conversation_id)
         history = [ChatMessage(role=m.role, content=m.content) for m in history_rows]
 
-        # Optional long-term memory prime.
         primes: list[str] = []
+        if persona_prompt:
+            primes.append(persona_prompt)
+
+        # Optional long-term memory prime.
         if use_memory:
             try:
                 mem = MemoryService(MemoryRepository(session), embeddings, settings)

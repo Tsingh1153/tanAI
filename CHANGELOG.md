@@ -11,6 +11,28 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.0] — 2026-09-15
+
+### Added
+- **Finance personas** — a tab bar switches the assistant into a domain mode:
+  Personal Finance, Markets & Investing, Corporate Finance, or Finance Tutor
+  (General is the default). Each injects a domain system prompt served from a new
+  `/api/personas` endpoint, with an education-not-advice guardrail on every finance
+  mode. Applies to both normal and agent turns.
+- **Finance corpus + seed script** — an original reference corpus in
+  `backend/corpus/finance/` plus `scripts/seed_corpus.py` to load it as global RAG
+  documents, so the personas are grounded out of the box.
+
+### Changed
+- **De-AI cleanup pass** — trimmed verbose docstrings/comments to one-liners and
+  "why" notes across the codebase; ran Ruff + Prettier; import cleanup.
+
+### Fixed
+- **Test isolation** — added a `conftest.py` that resets the schema before each
+  test, fixing cross-file database pollution that made the suite order-dependent.
+
+---
+
 ## [1.1.0] — 2026-09-14
 
 ### Added

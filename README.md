@@ -161,6 +161,22 @@ That's it — you're using tanAI.
 > Tip: keep the terminal window open while you use tanAI — closing it stops the
 > app. On Windows, the steps differ; see Option A below and use `start.ps1`.
 
+### Turn it into a double-click app (macOS)
+
+Tired of the terminal? Run this once to create a **tanAI** app on your Desktop:
+
+```bash
+cd ~/Desktop/tanAI && ./scripts/make-app.sh
+```
+
+From then on, just **double-click tanAI** on your Desktop — it starts everything
+and opens the app in your browser (the first launch takes ~30–60 seconds). To
+stop it later, run `kill $(cat ~/.tanai.pid)`. Logs go to
+`~/Library/Logs/tanAI.log` if anything looks off.
+
+*(This opens tanAI in your default browser. A fully native window is possible
+with a Tauri build — a nice future upgrade.)*
+
 ---
 
 ## Requirements

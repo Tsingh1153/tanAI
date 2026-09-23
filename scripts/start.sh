@@ -55,6 +55,20 @@ if command -v fm >/dev/null 2>&1; then
   FM_PID=$!
 fi
 
+# --- Ollama (start it with speedups if it isn't already running) ---------- #
+OLLAMA_PID=""
+OLLAMA_URL="${LOCALMIND_OLLAMA_BASE_URL:-http://localhost:11434}"
+if command -v ollama >/dev/null 2>&1; then
+  if ! curl -s -o /dev/null "$OLLAMA_URL/api/tags" 2>/dev/null; then
+    echo "▶ Starting Ollama with flash attention + quantized KV cache"
+    # Speedups: faster attention, and a smaller KV cache so more fits on the GPU.
+    OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 ollama serve >/dev/null 2>&1 &
+    OLLAMA_PID=$!
+    # Give the server a moment to come up before the backend warms models.
+    sleep 2
+  fi
+fi
+
 # --- Backend -------------------------------------------------------------- #
 cd "$BACKEND_DIR"
 
@@ -105,6 +119,7 @@ cleanup() {
   echo "▶ Shutting down…"
   kill "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null || true
   [ -n "$FM_PID" ] && kill "$FM_PID" 2>/dev/null || true
+  [ -n "$OLLAMA_PID" ] && kill "$OLLAMA_PID" 2>/dev/null || true
   wait 2>/dev/null || true
 }
 trap cleanup INT TERM

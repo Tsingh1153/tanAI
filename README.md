@@ -99,6 +99,70 @@ at a remote API yourself.
 - **Clean architecture**: repository pattern, dependency injection, typed schemas,
   async throughout, and passing end-to-end tests for both chat and RAG.
 
+## Getting started with zero terminal experience (macOS)
+
+Never used the "terminal" before? No problem. The terminal is just a text box
+where you type commands and press **Enter**. You'll copy each block below, paste
+it in, and press Enter. Follow these in order — you only do steps 1–4 **once**.
+
+**How to open the terminal:** press `Cmd` + `Space`, type **Terminal**, and press
+Enter. A window with a blinking cursor appears. To paste, use `Cmd` + `V`. After
+pasting a command, always press **Enter** to run it. Some steps download things
+and can take a few minutes — that's normal; wait until the blinking cursor comes
+back before the next step.
+
+**1. Install Homebrew** (a tool that installs the other tools). Paste this, press
+Enter, and follow any prompts (it may ask for your Mac password — typing shows
+nothing on screen, which is normal; just type it and press Enter):
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+When it finishes, it may print two lines starting with `eval` and tell you to run
+them — if so, copy-paste and run those, then continue.
+
+**2. Install the tools tanAI needs:**
+
+```bash
+brew install node python@3.12 ollama git
+```
+
+**3. Start Ollama and download the AI models** (the first is the brain, the
+second powers document search). These downloads are a few gigabytes, so give them
+time:
+
+```bash
+ollama serve &
+ollama pull qwen2.5:7b
+ollama pull nomic-embed-text
+```
+
+**4. Download tanAI itself** onto your Desktop:
+
+```bash
+cd ~/Desktop
+git clone https://github.com/Tsingh1153/tanAI.git
+```
+
+**5. Start tanAI** (this is the only step you repeat each time you want to use it):
+
+```bash
+cd ~/Desktop/tanAI && ./scripts/start.sh
+```
+
+The first run installs a few more things and takes a minute or two. When it prints
+`tanAI is running`, open your web browser and go to **http://localhost:3000**.
+That's it — you're using tanAI.
+
+**To stop it:** click the terminal window and press `Ctrl` + `C`.
+**To use it again later:** open Terminal and repeat step 5 only.
+
+> Tip: keep the terminal window open while you use tanAI — closing it stops the
+> app. On Windows, the steps differ; see Option A below and use `start.ps1`.
+
+---
+
 ## Requirements
 
 - **Python 3.10+**
@@ -186,6 +250,13 @@ lot:
 - **Pick a right-sized model.** A 3–4B model (e.g. `qwen2.5:3b`, `moondream`) is
   much faster than a 7–8B one on a MacBook Air; use the bigger model only when you
   need the quality. Switch instantly from the model dropdown.
+- **Let Auto route for you.** Pick **Auto** in the model dropdown and each message
+  goes to the best model you have installed — so a quick question can land on a
+  small fast model while code/long-context requests get a stronger one, without you
+  switching by hand.
+- **Use Apple's on-device model for quick tasks (macOS 27+).** If the `fm` CLI is
+  present, the launcher exposes Apple Foundation Models as a provider — it's very
+  fast and memory-light, ideal for short prompts alongside a bigger Ollama model.
 - **Lower the context window** if you don't need long memory:
   `LOCALMIND_NUM_CTX=4096` speeds up load time and reduces memory.
 - **Enable Ollama's speedups** (set these for the Ollama server, once). On macOS:

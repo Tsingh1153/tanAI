@@ -1,9 +1,15 @@
-"""Document text extraction: each format -> TextSegments (text + citation locator)."""
+"""Document text extraction: each format -> TextSegments (text + citation locator).
+
+OCR (scanned PDFs and images) and a few formats rely on optional dependencies; if
+they're missing, parsing raises a clear ParseError telling the user what to install
+rather than failing silently.
+"""
 
 from __future__ import annotations
 
 import csv
-import io
+import shutil
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -59,18 +65,28 @@ _TEXT_EXTENSIONS = {
     ".xml",
 }
 
+# Parsed by a dedicated handler below.
+_DOC_EXTENSIONS = {
+    ".pdf",
+    ".docx",
+    ".pptx",
+    ".xlsx",
+    ".csv",
+    ".tsv",
+    ".html",
+    ".htm",
+    ".rtf",
+    ".odt",
+    ".epub",
+}
+
+# Image formats read via OCR.
+_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".webp", ".gif"}
+
 
 def supported_extension(filename: str) -> bool:
     ext = Path(filename).suffix.lower()
-    return ext in _TEXT_EXTENSIONS or ext in {
-        ".pdf",
-        ".docx",
-        ".pptx",
-        ".xlsx",
-        ".csv",
-        ".html",
-        ".htm",
-    }
+    return ext in _TEXT_EXTENSIONS or ext in _DOC_EXTENSIONS or ext in _IMAGE_EXTENSIONS
 
 
 def extract_segments(path: str, filename: str) -> list[TextSegment]:
@@ -87,9 +103,19 @@ def extract_segments(path: str, filename: str) -> list[TextSegment]:
         if ext == ".xlsx":
             return _parse_xlsx(path)
         if ext == ".csv":
-            return _parse_csv(path)
+            return _parse_delimited(path, ",")
+        if ext == ".tsv":
+            return _parse_delimited(path, "\t")
         if ext in {".html", ".htm"}:
             return _parse_html(path)
+        if ext == ".rtf":
+            return _parse_rtf(path)
+        if ext == ".odt":
+            return _parse_odt(path)
+        if ext == ".epub":
+            return _parse_epub(path)
+        if ext in _IMAGE_EXTENSIONS:
+            return _parse_image(path)
         if ext in _TEXT_EXTENSIONS:
             return _parse_text(path)
     except ParseError:
@@ -109,15 +135,73 @@ def _parse_text(path: str) -> list[TextSegment]:
         return [TextSegment(text=_clean(fh.read()))]
 
 
+# --- OCR (optional: needs the `tesseract` binary + pytesseract/pillow) -------- #
+def _ocr_available() -> bool:
+    if shutil.which("tesseract") is None:
+        return False
+    try:
+        import pytesseract  # noqa: F401
+        from PIL import Image  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def _ocr_image(path: str) -> str:
+    import pytesseract
+    from PIL import Image
+
+    with Image.open(path) as img:
+        return _clean(pytesseract.image_to_string(img))
+
+
+def _parse_image(path: str) -> list[TextSegment]:
+    if not _ocr_available():
+        raise ParseError(
+            "Reading text from images needs OCR. Install it with: "
+            "brew install tesseract && pip install -r requirements-ocr.txt"
+        )
+    text = _ocr_image(path)
+    return [TextSegment(text=text)] if text else []
+
+
+def _ocr_pdf_pages(path: str, pages: list[int]) -> list[tuple[int, str]]:
+    """OCR specific PDF pages (needs pdf2image + the poppler binary)."""
+
+    try:
+        import pytesseract
+        from pdf2image import convert_from_path
+    except ImportError:
+        return []
+    out: list[tuple[int, str]] = []
+    for i in pages:
+        try:
+            images = convert_from_path(path, first_page=i, last_page=i, dpi=200)
+        except Exception:
+            break  # poppler missing or render failure — stop trying
+        for img in images:
+            out.append((i, _clean(pytesseract.image_to_string(img))))
+    return out
+
+
 def _parse_pdf(path: str) -> list[TextSegment]:
     from pypdf import PdfReader
 
     reader = PdfReader(path)
     segments: list[TextSegment] = []
+    scanned: list[int] = []
     for i, page in enumerate(reader.pages, start=1):
         text = _clean(page.extract_text() or "")
         if text:
             segments.append(TextSegment(text=text, locator=f"p. {i}"))
+        else:
+            scanned.append(i)
+
+    # Pages with no embedded text are likely scanned — OCR them if we can.
+    if scanned and _ocr_available():
+        for i, text in _ocr_pdf_pages(path, scanned):
+            if text:
+                segments.append(TextSegment(text=text, locator=f"p. {i} (OCR)"))
     return segments
 
 
@@ -173,11 +257,10 @@ def _parse_xlsx(path: str) -> list[TextSegment]:
     return segments
 
 
-def _parse_csv(path: str) -> list[TextSegment]:
+def _parse_delimited(path: str, delimiter: str) -> list[TextSegment]:
     with open(path, "r", encoding="utf-8", errors="replace", newline="") as fh:
-        sample = fh.read()
-    reader = csv.reader(io.StringIO(sample))
-    rows = [" | ".join(cell for cell in row) for row in reader if any(row)]
+        reader = csv.reader(fh, delimiter=delimiter)
+        rows = [" | ".join(cell for cell in row) for row in reader if any(row)]
     text = _clean("\n".join(rows))
     return [TextSegment(text=text)] if text else []
 
@@ -191,3 +274,43 @@ def _parse_html(path: str) -> list[TextSegment]:
         tag.decompose()
     text = _clean(soup.get_text(separator="\n"))
     return [TextSegment(text=text)] if text else []
+
+
+def _parse_rtf(path: str) -> list[TextSegment]:
+    try:
+        from striprtf.striprtf import rtf_to_text
+    except ImportError as exc:
+        raise ParseError(
+            "Reading .rtf files needs an extra library: pip install striprtf"
+        ) from exc
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        text = _clean(rtf_to_text(fh.read()))
+    return [TextSegment(text=text)] if text else []
+
+
+def _parse_odt(path: str) -> list[TextSegment]:
+    from bs4 import BeautifulSoup
+
+    with zipfile.ZipFile(path) as zf:
+        content = zf.read("content.xml").decode("utf-8", errors="replace")
+    soup = BeautifulSoup(content, "html.parser")
+    text = _clean(soup.get_text(separator="\n"))
+    return [TextSegment(text=text)] if text else []
+
+
+def _parse_epub(path: str) -> list[TextSegment]:
+    from bs4 import BeautifulSoup
+
+    segments: list[TextSegment] = []
+    with zipfile.ZipFile(path) as zf:
+        names = [
+            n for n in zf.namelist() if n.lower().endswith((".xhtml", ".html", ".htm"))
+        ]
+        for name in sorted(names):
+            soup = BeautifulSoup(zf.read(name), "html.parser")
+            for tag in soup(["script", "style"]):
+                tag.decompose()
+            text = _clean(soup.get_text(separator="\n"))
+            if text:
+                segments.append(TextSegment(text=text, locator=Path(name).name))
+    return segments

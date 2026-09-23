@@ -1,0 +1,8 @@
+# Optional: OCR for scanned PDFs and images (photos/screenshots of text).
+# Also needs the system binaries:
+#   macOS:  brew install tesseract poppler
+#   Ubuntu: apt-get install tesseract-ocr poppler-utils
+# Then:  pip install -r requirements-ocr.txt
+pytesseract==0.3.13
+pillow==11.1.0
+pdf2image==1.17.0

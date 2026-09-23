@@ -21,6 +21,7 @@ import { PersonasPanel } from "@/components/PersonasPanel";
 import { Toolbar } from "@/components/Toolbar";
 import { BootSplash } from "@/components/BootSplash";
 import { CommandPalette, type Command } from "@/components/CommandPalette";
+import { Onboarding } from "@/components/Onboarding";
 import { useChat } from "@/lib/useChat";
 import { api } from "@/lib/api";
 import { personaColor, startersFor } from "@/lib/personaStyle";
@@ -49,7 +50,22 @@ export default function Home() {
   const [persona, setPersona] = useState<string | null>(null);
   const [personasOpen, setPersonasOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const prevStreamingRef = useRef(false);
+
+  // Show the welcome/setup guide on first run.
+  useEffect(() => {
+    if (!localStorage.getItem("tanai-onboarded")) setOnboardingOpen(true);
+  }, []);
+
+  const closeOnboarding = useCallback(() => {
+    try {
+      localStorage.setItem("tanai-onboarded", "1");
+    } catch {
+      /* ignore */
+    }
+    setOnboardingOpen(false);
+  }, []);
 
   const {
     messages,
@@ -408,6 +424,12 @@ export default function Home() {
         group: "Open",
         run: () => setSettingsOpen(true),
       },
+      {
+        id: "open-onboarding",
+        label: "Welcome & setup guide",
+        group: "Open",
+        run: () => setOnboardingOpen(true),
+      },
     );
     return cmds;
   }, [
@@ -661,6 +683,8 @@ export default function Home() {
         onClose={() => setPaletteOpen(false)}
         commands={commands}
       />
+
+      <Onboarding open={onboardingOpen} onClose={closeOnboarding} />
     </div>
   );
 }

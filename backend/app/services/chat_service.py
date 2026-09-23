@@ -90,7 +90,7 @@ class ChatService:
         )
 
     async def _pick_vision_model(self, provider) -> str | None:
-        """Configured vision model, or the first installed one that looks visual."""
+        """Configured vision model, else the strongest installed one (small last)."""
 
         if self._settings.vision_assist_model:
             return self._settings.vision_assist_model
@@ -98,10 +98,16 @@ class ChatService:
             models = await provider.list_models()
         except Exception:
             return None
-        for model in models:
-            if _looks_vision(model.name):
-                return model.name
-        return None
+        names = [m.name for m in models if _looks_vision(m.name)]
+        if not names:
+            return None
+        # Prefer richer vision models over tiny ones like moondream.
+        preference = ("llama3.2-vision", "llava", "-vl", "vl", "minicpm-v", "gemma3")
+        for hint in preference:
+            for name in names:
+                if hint in name.lower():
+                    return name
+        return names[0]
 
     def _save_images(self, data_urls: list[str]) -> list[str]:
         """Persist data-URL images to disk; return their filenames."""

@@ -40,7 +40,7 @@ export default function Home() {
   const [availableDocs, setAvailableDocs] = useState(0);
   const [useRag, setUseRag] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
-  const [useMemory, setUseMemory] = useState(true);
+  const [universalMemory, setUniversalMemory] = useState(true);
   const [useAgent, setUseAgent] = useState(false);
   const [useWeb, setUseWeb] = useState(false);
   const [webcamOpen, setWebcamOpen] = useState(false);
@@ -56,6 +56,22 @@ export default function Home() {
   // Show the welcome/setup guide on first run.
   useEffect(() => {
     if (!localStorage.getItem("tanai-onboarded")) setOnboardingOpen(true);
+  }, []);
+
+  // Universal memory is a persisted preference (on by default), set in Settings.
+  useEffect(() => {
+    if (localStorage.getItem("tanai-universal-memory") === "0") {
+      setUniversalMemory(false);
+    }
+  }, []);
+
+  const changeUniversalMemory = useCallback((value: boolean) => {
+    setUniversalMemory(value);
+    try {
+      localStorage.setItem("tanai-universal-memory", value ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const closeOnboarding = useCallback(() => {
@@ -85,7 +101,7 @@ export default function Home() {
       model: model || undefined,
       provider: provider || undefined,
       useRag: useRag && availableDocs > 0,
-      useMemory,
+      useMemory: universalMemory,
       useWeb,
       agent: useAgent,
       persona: persona ?? undefined,
@@ -95,7 +111,7 @@ export default function Home() {
       provider,
       useRag,
       availableDocs,
-      useMemory,
+      universalMemory,
       useWeb,
       useAgent,
       persona,
@@ -259,7 +275,7 @@ export default function Home() {
         model: model || undefined,
         provider: provider || undefined,
         useRag: useRag && availableDocs > 0,
-        useMemory,
+        useMemory: universalMemory,
         useWeb,
         agent: useAgent,
         persona: persona ?? undefined,
@@ -274,7 +290,7 @@ export default function Home() {
       provider,
       useRag,
       availableDocs,
-      useMemory,
+      universalMemory,
       useWeb,
       useAgent,
       persona,
@@ -357,13 +373,6 @@ export default function Home() {
     }
     cmds.push(
       {
-        id: "toggle-memory",
-        label: "Toggle Memory",
-        group: "Toggle",
-        active: useMemory,
-        run: () => setUseMemory((v) => !v),
-      },
-      {
         id: "toggle-web",
         label: "Toggle Web search",
         group: "Toggle",
@@ -440,7 +449,6 @@ export default function Home() {
     provider,
     personas,
     persona,
-    useMemory,
     useWeb,
     useAgent,
     useRag,
@@ -609,8 +617,6 @@ export default function Home() {
             useRag={useRag}
             availableDocs={availableDocs}
             onToggleRag={() => setUseRag((v) => !v)}
-            useMemory={useMemory}
-            onToggleMemory={() => setUseMemory((v) => !v)}
             useWeb={useWeb}
             onToggleWeb={() => setUseWeb((v) => !v)}
             useAgent={useAgent}
@@ -656,6 +662,8 @@ export default function Home() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         hardware={health?.hardware ?? null}
+        universalMemory={universalMemory}
+        onUniversalMemoryChange={changeUniversalMemory}
         onChange={() => {
           refreshModels();
           refreshHealth();

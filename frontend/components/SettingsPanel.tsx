@@ -85,11 +85,15 @@ export function SettingsPanel({
   onClose,
   hardware,
   onChange,
+  universalMemory,
+  onUniversalMemoryChange,
 }: {
   open: boolean;
   onClose: () => void;
   hardware: string | null;
   onChange: () => void;
+  universalMemory: boolean;
+  onUniversalMemoryChange: (value: boolean) => void;
 }) {
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -322,6 +326,36 @@ export function SettingsPanel({
               <p className="text-xs text-muted">Detected hardware</p>
               <p className="text-sm text-content">{hardware ?? "—"}</p>
             </div>
+          </div>
+
+          {/* Preferences */}
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+            Preferences
+          </h3>
+          <div className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="text-sm text-content">Universal memory</p>
+              <p className="text-xs text-muted">
+                Always remember durable facts about you across every chat.
+              </p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={universalMemory}
+              onClick={() => onUniversalMemoryChange(!universalMemory)}
+              className={clsx(
+                "relative h-6 w-10 shrink-0 rounded-full transition-colors",
+                universalMemory ? "bg-accent" : "bg-elevated",
+              )}
+              aria-label="Toggle universal memory"
+            >
+              <span
+                className={clsx(
+                  "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all",
+                  universalMemory ? "left-[1.125rem]" : "left-0.5",
+                )}
+              />
+            </button>
           </div>
 
           {/* Apple Foundation Models quota (macOS 27+) */}

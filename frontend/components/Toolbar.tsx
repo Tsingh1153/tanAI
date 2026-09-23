@@ -20,8 +20,6 @@ export function Toolbar({
   useRag,
   availableDocs,
   onToggleRag,
-  useMemory,
-  onToggleMemory,
   useWeb,
   onToggleWeb,
   useAgent,
@@ -36,8 +34,6 @@ export function Toolbar({
   useRag: boolean;
   availableDocs: number;
   onToggleRag: () => void;
-  useMemory: boolean;
-  onToggleMemory: () => void;
   useWeb: boolean;
   onToggleWeb: () => void;
   useAgent: boolean;
@@ -81,13 +77,6 @@ export function Toolbar({
             ? "Upload documents to enable"
             : "Answer from this chat's documents"
         }
-      />
-      <Toggle
-        active={useMemory}
-        onClick={onToggleMemory}
-        icon={<Brain size={14} />}
-        label="Memory"
-        title={useMemory ? "Memory on" : "Memory off"}
       />
       <Toggle
         active={useWeb}

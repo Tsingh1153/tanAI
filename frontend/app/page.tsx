@@ -665,6 +665,13 @@ export default function Home() {
   );
 }
 
+function timeGreeting(hour: number): string {
+  if (hour < 5) return "Working late?";
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
 // Welcome / zero-state: a warm, time-aware greeting and persona-aware starters.
 function EmptyState({
   onPrompt,
@@ -677,16 +684,7 @@ function EmptyState({
   personaId: string | null;
   personaLabel: string | null;
 }) {
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 5
-      ? "Working late?"
-      : hour < 12
-        ? "Good morning"
-        : hour < 18
-          ? "Good afternoon"
-          : "Good evening";
-
+  const greeting = timeGreeting(new Date().getHours());
   const starters = startersFor(personaId);
   const dot = personaColor(personaId);
 

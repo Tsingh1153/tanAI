@@ -262,6 +262,25 @@ export default function Home() {
     [activeId, refreshConversations],
   );
 
+  // Attach files directly from the composer: upload to this chat, then turn
+  // Documents on so the next message is grounded in them.
+  const handleAttachFiles = useCallback(
+    async (files: File[]) => {
+      const targetId = await ensureConversation();
+      for (const file of files) {
+        try {
+          await api.uploadDocument(file, targetId);
+        } catch (e) {
+          setLoadError(null);
+          console.error(`Failed to read ${file.name}: ${(e as Error).message}`);
+        }
+      }
+      await refreshDocs();
+      setUseRag(true);
+    },
+    [ensureConversation, refreshDocs],
+  );
+
   const handleSend = useCallback(
     async (text: string, images: string[] = []) => {
       let targetId = activeId;
@@ -638,6 +657,7 @@ export default function Home() {
           <Composer
             onSend={handleSend}
             onStop={stop}
+            onAttachFiles={handleAttachFiles}
             streaming={streaming}
             disabled={!!offline}
           />

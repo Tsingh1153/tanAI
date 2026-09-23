@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, ImagePlus, Loader2, Mic, Square, X } from "lucide-react";
+import {
+  ArrowUp,
+  ImagePlus,
+  Loader2,
+  Mic,
+  Paperclip,
+  Square,
+  X,
+} from "lucide-react";
 import clsx from "clsx";
 import { api } from "@/lib/api";
 
@@ -10,11 +18,13 @@ import { api } from "@/lib/api";
 export function Composer({
   onSend,
   onStop,
+  onAttachFiles,
   streaming,
   disabled,
 }: {
   onSend: (text: string, images: string[]) => void;
   onStop: () => void;
+  onAttachFiles?: (files: File[]) => Promise<void>;
   streaming: boolean;
   disabled?: boolean;
 }) {
@@ -23,10 +33,23 @@ export function Composer({
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [attaching, setAttaching] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const docRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  const attachDocuments = async (files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (!list.length || !onAttachFiles) return;
+    setAttaching(true);
+    try {
+      await onAttachFiles(list);
+    } finally {
+      setAttaching(false);
+    }
+  };
 
   const startRecording = async () => {
     setVoiceError(null);
@@ -108,6 +131,12 @@ export function Composer({
 
   const canSend = (!!text.trim() || images.length > 0) && !disabled;
 
+  let statusMessage: string | null = null;
+  if (attaching) statusMessage = "Reading your file(s)…";
+  else if (recording) statusMessage = "Recording… click the mic to stop";
+  else if (transcribing) statusMessage = "Transcribing…";
+  else if (voiceError) statusMessage = voiceError;
+
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-6">
       {images.length > 0 && (
@@ -134,15 +163,41 @@ export function Composer({
         </div>
       )}
       <div className="flex items-end gap-2 rounded-[1.75rem] border border-border bg-surface p-2 shadow-md transition-shadow focus-within:border-accent/60 focus-within:shadow-lg">
+        {onAttachFiles && (
+          <button
+            onClick={() => docRef.current?.click()}
+            disabled={disabled || attaching}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-elevated hover:text-content disabled:opacity-40"
+            aria-label="Attach a file to read"
+            title="Attach a file (PDF, Word, Excel, image…) for tanAI to read"
+          >
+            {attaching ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Paperclip size={18} />
+            )}
+          </button>
+        )}
         <button
           onClick={() => fileRef.current?.click()}
           disabled={disabled}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-elevated hover:text-content disabled:opacity-40"
           aria-label="Attach image"
-          title="Attach image"
+          title="Attach image (for the model to look at)"
         >
           <ImagePlus size={18} />
         </button>
+        <input
+          ref={docRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.tsv,.txt,.md,.rtf,.odt,.epub,.html,.htm,.json,.png,.jpg,.jpeg,.webp,.tiff,.bmp"
+          multiple
+          hidden
+          onChange={(e) => {
+            if (e.target.files?.length) attachDocuments(e.target.files);
+            e.target.value = "";
+          }}
+        />
         <button
           onClick={toggleMic}
           disabled={disabled || transcribing}
@@ -204,14 +259,8 @@ export function Composer({
           </button>
         )}
       </div>
-      {(recording || transcribing || voiceError) && (
-        <p className="mt-1.5 text-center text-xs text-muted">
-          {recording
-            ? "Recording… click the mic to stop"
-            : transcribing
-              ? "Transcribing…"
-              : voiceError}
-        </p>
+      {statusMessage && (
+        <p className="mt-1.5 text-center text-xs text-muted">{statusMessage}</p>
       )}
       <p className="mt-2 text-center text-[10px] text-muted/60">
         Local model — may be inaccurate. Verify important info.

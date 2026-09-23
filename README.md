@@ -14,10 +14,15 @@ at a remote API yourself.
 ## What works today
 
 - **Streaming chat** over WebSockets against a local **Ollama** model.
-- **Chat with your documents (RAG)** — upload PDF, Word, PowerPoint, Excel, CSV,
-  Markdown, HTML, or code; the app parses, chunks, embeds, and indexes them, then
-  grounds answers in the relevant passages with **inline source citations**.
+- **Chat with your documents (RAG)** — **attach files right in the chat box** (or
+  use the Documents panel): PDF, Word, PowerPoint, Excel, CSV/TSV, Markdown, HTML,
+  RTF, ODT, EPUB, code, and more. The app parses, chunks, embeds, and indexes them,
+  then grounds answers in the relevant passages with **inline source citations**.
   Retrieval is **hybrid** (semantic embeddings + keyword) over a local vector store.
+- **OCR (optional)** — read text from **scanned PDFs and images** (photos or
+  screenshots of text). Enable it with `brew install tesseract poppler` and
+  `pip install -r backend/requirements-ocr.txt`; without it, image/scanned files
+  simply report that OCR isn't installed.
 - **Memory & unlimited context** — long conversations auto-compress older turns
   into a **rolling summary** so you never hit the context wall, and the assistant
   builds **long-term memory** of durable facts/preferences across chats. Memories

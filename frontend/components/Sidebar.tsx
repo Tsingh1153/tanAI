@@ -18,6 +18,7 @@ import {
 import clsx from "clsx";
 import { Logo } from "./Logo";
 import { api } from "@/lib/api";
+import { personaColor } from "@/lib/personaStyle";
 import type { Conversation, Folder } from "@/lib/types";
 
 // Left rail: conversation list in Pinned / Folders / recency buckets, plus folder CRUD.
@@ -25,6 +26,7 @@ export function Sidebar({
   conversations,
   activeId,
   width,
+  conversationPersona,
   onSelect,
   onNew,
   onDelete,
@@ -33,6 +35,7 @@ export function Sidebar({
   conversations: Conversation[];
   activeId: string | null;
   width: number;
+  conversationPersona: Record<string, string | null>;
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
@@ -135,6 +138,7 @@ export function Sidebar({
       key={c.id}
       conv={c}
       active={c.id === activeId}
+      personaId={conversationPersona[c.id] ?? null}
       folders={folders}
       menuOpen={menuId === c.id}
       onOpenMenu={() => setMenuId(menuId === c.id ? null : c.id)}
@@ -279,6 +283,7 @@ function Section({
 function ConvRow({
   conv,
   active,
+  personaId,
   folders,
   menuOpen,
   onOpenMenu,
@@ -290,6 +295,7 @@ function ConvRow({
 }: {
   conv: Conversation;
   active: boolean;
+  personaId: string | null;
   folders: Folder[];
   menuOpen: boolean;
   onOpenMenu: () => void;
@@ -327,6 +333,13 @@ function ConvRow({
         )}
       />
       {conv.pinned && <Pin size={11} className="shrink-0 text-accent" />}
+      {personaId && (
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ backgroundColor: personaColor(personaId) }}
+          title="This chat has a mode set"
+        />
+      )}
       <button
         onClick={onSelect}
         className="flex-1 truncate text-left"

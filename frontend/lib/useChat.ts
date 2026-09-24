@@ -130,6 +130,7 @@ export function useChat(conversationId: string | null): UseChat {
             use_memory: useMemory !== false,
             use_web: !!useWeb,
             agent: !!agent,
+            auto_skills: true,
             images,
             regenerate: !!regenerate,
             persona,

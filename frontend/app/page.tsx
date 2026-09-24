@@ -24,7 +24,7 @@ import { CommandPalette, type Command } from "@/components/CommandPalette";
 import { Onboarding } from "@/components/Onboarding";
 import { useChat } from "@/lib/useChat";
 import { api } from "@/lib/api";
-import { personaColor, startersFor } from "@/lib/personaStyle";
+import { personaColor, personaTint, startersFor } from "@/lib/personaStyle";
 import type { Conversation, Health, ModelInfo, Persona } from "@/lib/types";
 
 export default function Home() {
@@ -41,8 +41,6 @@ export default function Home() {
   const [useRag, setUseRag] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [universalMemory, setUniversalMemory] = useState(true);
-  const [useAgent, setUseAgent] = useState(false);
-  const [useWeb, setUseWeb] = useState(false);
   const [webcamOpen, setWebcamOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
   const [speakReplies, setSpeakReplies] = useState(false);
@@ -74,6 +72,52 @@ export default function Home() {
     }
   }, []);
 
+  // Each chat remembers the mode it was used in (persisted), so switching chats
+  // restores its mode and the sidebar can mark it.
+  const [convPersona, setConvPersona] = useState<Record<string, string | null>>(
+    {},
+  );
+  const convPersonaRef = useRef(convPersona);
+  useEffect(() => {
+    convPersonaRef.current = convPersona;
+  }, [convPersona]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("tanai-conv-persona");
+      if (raw) setConvPersona(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const rememberPersona = useCallback(
+    (convId: string, personaId: string | null) => {
+      setConvPersona((prev) => {
+        const next = { ...prev, [convId]: personaId };
+        try {
+          localStorage.setItem("tanai-conv-persona", JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  // Adopt a chat's saved mode when it becomes active.
+  useEffect(() => {
+    if (activeId) setPersona(convPersonaRef.current[activeId] ?? null);
+  }, [activeId]);
+
+  const choosePersona = useCallback(
+    (id: string | null) => {
+      setPersona(id);
+      if (activeId) rememberPersona(activeId, id);
+    },
+    [activeId, rememberPersona],
+  );
+
   const closeOnboarding = useCallback(() => {
     try {
       localStorage.setItem("tanai-onboarded", "1");
@@ -102,20 +146,9 @@ export default function Home() {
       provider: provider || undefined,
       useRag: useRag && availableDocs > 0,
       useMemory: universalMemory,
-      useWeb,
-      agent: useAgent,
       persona: persona ?? undefined,
     }),
-    [
-      model,
-      provider,
-      useRag,
-      availableDocs,
-      universalMemory,
-      useWeb,
-      useAgent,
-      persona,
-    ],
+    [model, provider, useRag, availableDocs, universalMemory, persona],
   );
 
   // Stable handlers for message edit / regenerate (keeps memoized bubbles from
@@ -295,11 +328,10 @@ export default function Home() {
         provider: provider || undefined,
         useRag: useRag && availableDocs > 0,
         useMemory: universalMemory,
-        useWeb,
-        agent: useAgent,
         persona: persona ?? undefined,
         images: images.length ? images : undefined,
       });
+      rememberPersona(targetId, persona);
       // Refresh titles/order shortly after the turn begins.
       setTimeout(() => refreshConversations(), 400);
     },
@@ -310,11 +342,10 @@ export default function Home() {
       useRag,
       availableDocs,
       universalMemory,
-      useWeb,
-      useAgent,
       persona,
       send,
       refreshConversations,
+      rememberPersona,
     ],
   );
 
@@ -379,7 +410,7 @@ export default function Home() {
       label: "General",
       group: "Persona",
       active: persona === null,
-      run: () => setPersona(null),
+      run: () => choosePersona(null),
     });
     for (const p of personas) {
       cmds.push({
@@ -387,25 +418,9 @@ export default function Home() {
         label: p.label,
         group: "Persona",
         active: persona === p.id,
-        run: () => setPersona(p.id),
+        run: () => choosePersona(p.id),
       });
     }
-    cmds.push(
-      {
-        id: "toggle-web",
-        label: "Toggle Web search",
-        group: "Toggle",
-        active: useWeb,
-        run: () => setUseWeb((v) => !v),
-      },
-      {
-        id: "toggle-agent",
-        label: "Toggle Agent",
-        group: "Toggle",
-        active: useAgent,
-        run: () => setUseAgent((v) => !v),
-      },
-    );
     if (availableDocs > 0) {
       cmds.push({
         id: "toggle-docs",
@@ -468,8 +483,7 @@ export default function Home() {
     provider,
     personas,
     persona,
-    useWeb,
-    useAgent,
+    choosePersona,
     useRag,
     availableDocs,
   ]);
@@ -521,6 +535,7 @@ export default function Home() {
         conversations={conversations}
         activeId={activeId}
         width={sidebarWidth}
+        conversationPersona={convPersona}
         onSelect={setActiveId}
         onNew={handleNew}
         onDelete={handleDelete}
@@ -535,7 +550,16 @@ export default function Home() {
         title="Drag to resize"
       />
 
-      <main className="flex h-full flex-1 flex-col">
+      <main
+        className="flex h-full flex-1 flex-col transition-[background] duration-700"
+        style={
+          persona
+            ? {
+                backgroundImage: `linear-gradient(180deg, ${personaTint(persona, 0.14)}, transparent 55%)`,
+              }
+            : undefined
+        }
+      >
         {/* Header */}
         <header className="flex items-center justify-between border-b border-border bg-canvas px-4 py-2.5">
           <div className="flex items-center gap-3">
@@ -625,7 +649,7 @@ export default function Home() {
             <PersonaTabs
               personas={personas}
               active={persona}
-              onChange={setPersona}
+              onChange={choosePersona}
               onManage={() => setPersonasOpen(true)}
             />
           </div>
@@ -636,10 +660,6 @@ export default function Home() {
             useRag={useRag}
             availableDocs={availableDocs}
             onToggleRag={() => setUseRag((v) => !v)}
-            useWeb={useWeb}
-            onToggleWeb={() => setUseWeb((v) => !v)}
-            useAgent={useAgent}
-            onToggleAgent={() => setUseAgent((v) => !v)}
             speakReplies={speakReplies}
             onToggleSpeak={() => {
               const next = !speakReplies;

@@ -21,6 +21,11 @@ export function personaColor(id: string | null, s = 55, l = 58): string {
   return `hsl(${personaHue(id)} ${s}% ${l}%)`;
 }
 
+// Translucent tint for washing a chat's background in its mode color.
+export function personaTint(id: string | null, alpha = 0.08): string {
+  return `hsl(${personaHue(id)} 60% 55% / ${alpha})`;
+}
+
 const STARTERS: Record<string, string[]> = {
   general: [
     "Explain quantum entanglement simply",

@@ -5,11 +5,9 @@ import {
   BookOpen,
   Brain,
   Camera,
-  Globe,
   ImageIcon,
   MoreHorizontal,
   Volume2,
-  Wrench,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -20,10 +18,6 @@ export function Toolbar({
   useRag,
   availableDocs,
   onToggleRag,
-  useWeb,
-  onToggleWeb,
-  useAgent,
-  onToggleAgent,
   speakReplies,
   onToggleSpeak,
   onManageDocs,
@@ -34,10 +28,6 @@ export function Toolbar({
   useRag: boolean;
   availableDocs: number;
   onToggleRag: () => void;
-  useWeb: boolean;
-  onToggleWeb: () => void;
-  useAgent: boolean;
-  onToggleAgent: () => void;
   speakReplies: boolean;
   onToggleSpeak: () => void;
   onManageDocs: () => void;
@@ -78,20 +68,9 @@ export function Toolbar({
             : "Answer from this chat's documents"
         }
       />
-      <Toggle
-        active={useWeb}
-        onClick={onToggleWeb}
-        icon={<Globe size={14} />}
-        label="Web"
-        title={useWeb ? "Web search on" : "Search the web for current info"}
-      />
-      <Toggle
-        active={useAgent}
-        onClick={onToggleAgent}
-        icon={<Wrench size={14} />}
-        label="Agent"
-        title={useAgent ? "Agent on — can use tools" : "Agent off"}
-      />
+      <span className="ml-1 text-[11px] text-muted">
+        Web &amp; tools: automatic
+      </span>
 
       <div ref={ref} className="relative ml-auto">
         <button

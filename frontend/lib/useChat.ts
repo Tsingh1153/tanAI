@@ -38,6 +38,19 @@ export function useChat(conversationId: string | null): UseChat {
     useState<PendingApproval | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
 
+  // Smooth "typewriter" reveal: tokens land in uneven bursts, so we buffer the
+  // full text and reveal characters at a steady, eased rate for a fluid feel.
+  const targetRef = useRef("");
+  const shownRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+
+  const stopPump = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
   // Load history whenever the active conversation changes.
   useEffect(() => {
     let cancelled = false;
@@ -65,11 +78,12 @@ export function useChat(conversationId: string | null): UseChat {
   }, []);
 
   const stop = useCallback(() => {
+    stopPump();
     socketRef.current?.close();
     socketRef.current = null;
     setStreaming(false);
     setPendingApproval(null);
-  }, []);
+  }, [stopPump]);
 
   // Answer an agent approval request over the live socket.
   const approve = useCallback((approved: boolean) => {
@@ -115,9 +129,49 @@ export function useChat(conversationId: string | null): UseChat {
       });
       setMessages((prev) => [...prev, ...newTurns]);
 
+      // Reset the reveal buffer for this turn.
+      targetRef.current = "";
+      shownRef.current = 0;
+      let done = false;
+
       setStreaming(true);
       const ws = new WebSocket(`${wsBase()}/ws/chat/${conversationId}`);
       socketRef.current = ws;
+
+      const finish = () => {
+        setStreaming(false);
+        setPendingApproval(null);
+        if (socketRef.current === ws) socketRef.current = null;
+        ws.close();
+      };
+
+      // Reveal buffered text a little each frame so uneven token bursts read as
+      // smooth typing. Speed eases with how far behind we are, so it always
+      // catches up without ever dumping a whole block at once.
+      const pump = () => {
+        const target = targetRef.current;
+        const remaining = target.length - shownRef.current;
+        if (remaining > 0) {
+          const step = Math.min(Math.max(Math.ceil(remaining / 6), 2), 14);
+          shownRef.current += step;
+          const text = target.slice(0, shownRef.current);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, content: text } : m,
+            ),
+          );
+        }
+        if (shownRef.current < target.length || !done) {
+          rafRef.current = requestAnimationFrame(pump);
+        } else {
+          rafRef.current = null;
+          finish();
+        }
+      };
+      const ensurePump = () => {
+        if (rafRef.current === null)
+          rafRef.current = requestAnimationFrame(pump);
+      };
 
       ws.onopen = () =>
         ws.send(
@@ -140,13 +194,8 @@ export function useChat(conversationId: string | null): UseChat {
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data) as StreamEvent;
         if (msg.type === "token") {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId
-                ? { ...m, content: m.content + msg.data }
-                : m,
-            ),
-          );
+          targetRef.current += msg.data;
+          ensurePump();
         } else if (msg.type === "sources") {
           setMessages((prev) =>
             prev.map((m) =>
@@ -216,23 +265,22 @@ export function useChat(conversationId: string | null): UseChat {
           setPendingApproval({ tool: msg.tool, arguments: msg.arguments });
         } else if (msg.type === "error") {
           setError(msg.detail);
-          setStreaming(false);
-          setPendingApproval(null);
-          ws.close();
+          stopPump();
+          finish();
         } else if (msg.type === "done") {
-          setStreaming(false);
-          setPendingApproval(null);
-          ws.close();
+          // Let the reveal drain the remaining buffer, then finalize itself.
+          done = true;
+          ensurePump();
         }
       };
 
       ws.onerror = () => {
         setError("Connection to the model backend failed.");
+        stopPump();
         setStreaming(false);
       };
 
       ws.onclose = () => {
-        setStreaming(false);
         if (socketRef.current === ws) socketRef.current = null;
       };
     },

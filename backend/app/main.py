@@ -94,6 +94,7 @@ from .schemas import (
     SearchResponse,
 )
 from .services.chat_service import ChatService, ConversationNotFound
+from .skills import wants_agent, wants_web
 from .web import fetch_url_text, web_search
 
 settings = get_settings()
@@ -1130,6 +1131,14 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                 bool(message.get("use_memory", True)) and settings.memory_enabled
             )
             use_agent = bool(message.get("agent")) and settings.agent_enabled
+
+            # Auto-skills: let the message decide whether to search the web or use
+            # tools, instead of manual toggles. Explicit flags above still win.
+            if bool(message.get("auto_skills", True)):
+                if settings.web_search_enabled and not use_web:
+                    use_web = wants_web(content)
+                if settings.agent_enabled and not use_agent:
+                    use_agent = wants_agent(content)
 
             # Auto router: resolve "auto" to a concrete model for this turn.
             if model == "auto":

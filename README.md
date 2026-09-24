@@ -179,8 +179,45 @@ and opens the app in your browser (the first launch takes ~30–60 seconds). To
 stop it later, run `kill $(cat ~/.tanai.pid)`. Logs go to
 `~/Library/Logs/tanAI.log` if anything looks off.
 
-*(This opens tanAI in your default browser. A fully native window is possible
-with a Tauri build — a nice future upgrade.)*
+*(This opens tanAI in a chrome-less browser window. For a real native app with
+its own window, icon, and process — and a shareable installer — build the
+desktop app below.)*
+
+---
+
+### Native desktop app (Tauri)
+
+This produces a genuine macOS app: a native window with the tanAI icon, its own
+process, and a `.dmg` you can hand to a tester. The app bundles the UI and the
+Python backend, and on launch it starts Ollama (if installed) and the backend,
+creating a Python environment on first run. Testers still need **Python 3.10+**
+and **Ollama** installed; onboarding walks them through pulling models.
+
+One-time toolchain setup:
+
+```bash
+# Rust (the desktop shell is Rust + your web UI in a native webview)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# Node deps for the shell + the UI
+npm install                    # in the repo root (installs the Tauri CLI)
+npm install --prefix frontend  # UI dependencies
+```
+
+Run it in development (hot-reloads the UI, opens the native window):
+
+```bash
+npm run dev
+```
+
+Build a distributable app + installer:
+
+```bash
+npm run build
+```
+
+The finished `tanAI.app` and `.dmg` land in
+`src-tauri/target/release/bundle/`. Regenerate the icon after editing the brand
+mark with `npm run icons`.
 
 ---
 

@@ -26,3 +26,10 @@ frontend/out/
 backend/data/
 backend/.env
 *.tsbuildinfo
+
+# Tauri desktop shell
+node_modules/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/backend/
+

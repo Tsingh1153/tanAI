@@ -469,7 +469,7 @@ export default function Home() {
       },
       {
         id: "open-onboarding",
-        label: "Welcome & setup guide",
+        label: "Setup & help",
         group: "Open",
         run: () => setOnboardingOpen(true),
       },
@@ -600,16 +600,27 @@ export default function Home() {
           <div className="flex flex-1 items-center justify-center p-8 text-center">
             <div className="max-w-md">
               <h2 className="mb-2 text-lg font-semibold text-content">
-                Backend unavailable
+                tanAI is still starting
               </h2>
-              <p className="text-sm text-muted">{loadError}</p>
-              <p className="mt-4 text-xs text-muted">
-                Start it with{" "}
-                <code className="rounded bg-elevated px-1.5 py-0.5">
-                  ./scripts/start.sh
-                </code>{" "}
-                or see the README.
+              <p className="text-sm leading-relaxed text-muted">
+                The engine that powers tanAI isn't ready yet. The first launch
+                takes a minute or two while it sets itself up — this screen
+                clears on its own once it's ready.
               </p>
+              <div className="mt-5 flex items-center justify-center gap-2">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="rounded-lg border border-border px-3 py-1.5 text-sm text-content transition-colors hover:bg-elevated"
+                >
+                  Try again
+                </button>
+                <button
+                  onClick={() => setOnboardingOpen(true)}
+                  className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90"
+                >
+                  Open setup guide
+                </button>
+              </div>
             </div>
           </div>
         ) : messages.length === 0 && !activeId ? (

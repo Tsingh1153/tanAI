@@ -33,3 +33,7 @@ src-tauri/target/
 src-tauri/gen/
 src-tauri/backend/
 
+
+# Internal docs kept only on Tanay's machine (auto-updated, not published)
+HOW_IT_WORKS.md
+CODE_WALKTHROUGH.md

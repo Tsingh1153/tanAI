@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../frontend/out",
     "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "npm --prefix frontend run dev",
+    "beforeDevCommand": "bash src-tauri/sync-backend.sh && npm --prefix frontend run dev",
     "beforeBuildCommand": "bash src-tauri/prebuild.sh"
   },
   "app": {

@@ -219,6 +219,33 @@ The finished `tanAI.app` and `.dmg` land in
 `src-tauri/target/release/bundle/`. Regenerate the icon after editing the brand
 mark with `npm run icons`.
 
+#### Everyday use (after building once)
+
+`npm run dev` is only for development. For normal use, build once, then treat
+tanAI like any other app:
+
+1. `npm run build`
+2. `open src-tauri/target/release/bundle/macos` and drag **tanAI** into your
+   **Applications** folder.
+3. Launch it any time from Spotlight (⌘-Space → "tanAI") or the Dock. It starts
+   Ollama and the backend for you — no terminal, ever.
+
+The built app doesn't auto-update. After we change the code, re-run
+`npm run build` and replace the copy in Applications.
+
+#### Sharing with a tester (unsigned app)
+
+The app isn't code-signed with an Apple Developer ID yet, so the first time a
+tester opens it macOS will say it "can't be opened because Apple cannot check it
+for malicious software." That's expected for an unsigned app. To open it:
+
+- **Right-click** (or Control-click) the app → **Open** → **Open** again. macOS
+  remembers the choice after the first time.
+
+The tester still needs **Ollama** installed (the app links them to it on first
+run) and **Python 3.10+**. Signing + notarization — which removes the warning
+entirely — needs a paid Apple Developer account and is a later step.
+
 ---
 
 ## Requirements

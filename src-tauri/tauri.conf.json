@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../frontend/out",
     "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "bash src-tauri/sync-backend.sh && npm --prefix frontend run dev",
+    "beforeDevCommand": "bash src-tauri/predev.sh && npm --prefix frontend run dev",
     "beforeBuildCommand": "bash src-tauri/prebuild.sh"
   },
   "app": {
@@ -37,7 +37,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["backend/**/*"],
+    "resources": ["backend-bin/**/*"],
     "macOS": {
       "minimumSystemVersion": "12.0"
     }

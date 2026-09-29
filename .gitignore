@@ -32,6 +32,12 @@ node_modules/
 src-tauri/target/
 src-tauri/gen/
 src-tauri/backend/
+src-tauri/backend-bin/
+src-tauri/.build-venv/
+
+# PyInstaller build artifacts (frozen backend)
+backend/build/
+backend/dist/
 
 
 # Internal docs kept only on Tanay's machine (auto-updated, not published)

@@ -188,10 +188,14 @@ desktop app below.)*
 ### Native desktop app (Tauri)
 
 This produces a genuine macOS app: a native window with the tanAI icon, its own
-process, and a `.dmg` you can hand to a tester. The app bundles the UI and the
-Python backend, and on launch it starts Ollama (if installed) and the backend,
-creating a Python environment on first run. Testers still need **Python 3.10+**
-and **Ollama** installed; onboarding walks them through pulling models.
+process, and a `.dmg` you can hand to a tester. The app bundles the UI and a
+**frozen, self-contained backend** (Python is baked in via PyInstaller), so a
+tester needs **no Python at all** — only **Ollama**, which onboarding links them
+to and then downloads the models for, in-app. On launch the app starts Ollama
+(if installed) and the backend on its own.
+
+Building the app on your machine still needs Python 3.10+ and Rust (only to
+build — the finished app carries its own copy).
 
 One-time toolchain setup:
 
@@ -242,9 +246,10 @@ for malicious software." That's expected for an unsigned app. To open it:
 - **Right-click** (or Control-click) the app → **Open** → **Open** again. macOS
   remembers the choice after the first time.
 
-The tester still needs **Ollama** installed (the app links them to it on first
-run) and **Python 3.10+**. Signing + notarization — which removes the warning
-entirely — needs a paid Apple Developer account and is a later step.
+The tester only needs **Ollama** installed (the app links them to it on first
+run and downloads the models for them) — Python is bundled inside the app.
+Signing + notarization — which removes the warning entirely — needs a paid Apple
+Developer account and is a later step.
 
 ---
 

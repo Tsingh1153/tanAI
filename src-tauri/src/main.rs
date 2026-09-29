@@ -90,20 +90,25 @@ fn find_python() -> Option<PathBuf> {
     None
 }
 
-/// The backend source: the repo copy during development, the bundled copy in a
-/// packaged app.
-fn backend_dir(app: &tauri::AppHandle) -> PathBuf {
-    if cfg!(debug_assertions) {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("..")
-            .join("backend")
-    } else {
-        app.path()
-            .resource_dir()
-            .map(|dir| dir.join("backend"))
-            .unwrap_or_default()
+/// The backend source directory in the repo (used only in development).
+fn dev_backend_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("backend")
+}
+
+#[cfg(unix)]
+fn make_executable(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    if let Ok(meta) = std::fs::metadata(path) {
+        let mut perms = meta.permissions();
+        perms.set_mode(0o755);
+        let _ = std::fs::set_permissions(path, perms);
     }
 }
+
+#[cfg(not(unix))]
+fn make_executable(_path: &Path) {}
 
 fn requirements_signature(req: &Path) -> String {
     std::fs::read_to_string(req).unwrap_or_default()
@@ -193,29 +198,45 @@ fn ensure_ollama(spawned: &Spawned) {
     }
 }
 
-/// Start the FastAPI backend. Its working directory is a writable folder under
-/// Application Support (the bundled source is read-only), while PYTHONPATH points
-/// at the source so `app.main` imports cleanly. The Tauri webview origin is added
-/// to CORS so the UI's requests are accepted.
+/// Origins the webview may use, so the backend's CORS accepts the UI's requests.
+const CORS_ORIGINS: &str = "[\"tauri://localhost\",\"http://tauri.localhost\",\"https://tauri.localhost\",\"http://localhost:3000\",\"http://127.0.0.1:3000\"]";
+
+/// Start the FastAPI backend. In a packaged app this launches the frozen,
+/// self-contained executable (no Python required on the machine). In development
+/// it runs the backend from source in a virtualenv. Either way the working
+/// directory is a writable folder under Application Support.
 fn ensure_backend(app: &tauri::AppHandle, spawned: &Spawned) -> Result<(), String> {
     if port_open(BACKEND_PORT) {
         return Ok(()); // already running (e.g. started separately in dev)
     }
 
-    let backend_dir = backend_dir(app);
-    if !backend_dir.exists() {
-        return Err(format!(
-            "Backend not found at {}.",
-            backend_dir.display()
-        ));
-    }
-
     let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&data_dir).ok();
 
-    let venv_py = ensure_venv(&backend_dir, &data_dir)?;
+    // 1) Packaged app: the frozen backend bundled as a resource.
+    if let Ok(res) = app.path().resource_dir() {
+        let exe = res.join("backend-bin").join("tanai-backend");
+        if exe.exists() {
+            make_executable(&exe);
+            let child = command(&exe)
+                .current_dir(&data_dir)
+                .env("PYTHONUNBUFFERED", "1")
+                .env("LOCALMIND_CORS_ORIGINS", CORS_ORIGINS)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .map_err(|e| e.to_string())?;
+            spawned.0.lock().unwrap().push(child);
+            return Ok(());
+        }
+    }
 
-    let cors = "[\"tauri://localhost\",\"http://tauri.localhost\",\"https://tauri.localhost\",\"http://localhost:3000\",\"http://127.0.0.1:3000\"]";
+    // 2) Development: run from source using a virtualenv.
+    let backend_dir = dev_backend_dir();
+    if !backend_dir.exists() {
+        return Err(format!("Backend not found at {}.", backend_dir.display()));
+    }
+    let venv_py = ensure_venv(&backend_dir, &data_dir)?;
     let child = command(&venv_py)
         .args([
             "-m",
@@ -229,7 +250,7 @@ fn ensure_backend(app: &tauri::AppHandle, spawned: &Spawned) -> Result<(), Strin
         .current_dir(&data_dir)
         .env("PYTHONPATH", &backend_dir)
         .env("PYTHONUNBUFFERED", "1")
-        .env("LOCALMIND_CORS_ORIGINS", cors)
+        .env("LOCALMIND_CORS_ORIGINS", CORS_ORIGINS)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()

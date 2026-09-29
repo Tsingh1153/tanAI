@@ -236,14 +236,25 @@ export default function Home() {
     return () => clearInterval(id);
   }, [refreshModels]);
 
-  // Initial load: health, models, conversation list.
+  // Initial load: health, models, conversation list. The bundled backend takes
+  // a few seconds to boot on a cold start, so poll health for up to a minute
+  // before showing an error — the boot splash stays up meanwhile.
   useEffect(() => {
+    let cancelled = false;
+    const waitForBackend = async () => {
+      for (let attempt = 0; attempt < 40 && !cancelled; attempt++) {
+        try {
+          return await api.health();
+        } catch {
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      }
+      return null;
+    };
     (async () => {
-      try {
-        const h = await api.health();
-        setHealth(h);
-        setModel(h.default_model);
-      } catch {
+      const h = await waitForBackend();
+      if (cancelled) return;
+      if (!h) {
         setLoadError(
           "Cannot reach the backend at " +
             (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000") +
@@ -251,6 +262,9 @@ export default function Home() {
         );
         return;
       }
+      setLoadError(null);
+      setHealth(h);
+      setModel(h.default_model);
       try {
         const m = await api.listModels();
         setModels(m);
@@ -265,9 +279,27 @@ export default function Home() {
       }
       await refreshPersonas();
       const list = await refreshConversations();
-      if (list.length > 0) setActiveId(list[0].id);
+      if (!cancelled && list.length > 0) setActiveId(list[0].id);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [refreshConversations, refreshPersonas]);
+
+  // If the error screen ever shows, keep checking quietly so it recovers on its
+  // own once the backend comes up — no need for the user to click "Try again".
+  useEffect(() => {
+    if (!loadError) return;
+    const id = setInterval(async () => {
+      try {
+        await api.health();
+        window.location.reload();
+      } catch {
+        /* still down; keep waiting */
+      }
+    }, 3000);
+    return () => clearInterval(id);
+  }, [loadError]);
 
   const activeConversation = conversations.find((c) => c.id === activeId);
 

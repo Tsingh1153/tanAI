@@ -158,11 +158,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Warm the chat + embedding models in the background so the first real
     # request doesn't pay the cold-load cost.
     if settings.warm_up:
-        asyncio.create_task(_warm_up_models())
+        _spawn(_warm_up_models())
 
     try:
         yield
     finally:
+        # Stop post-reply work (summaries, memory extraction) before closing
+        # the clients and DB it uses.
+        for task in list(_background):
+            task.cancel()
+        await asyncio.gather(*_background, return_exceptions=True)
         await app.state.registry.aclose()
         await app.state.embeddings.aclose()
         await app.state.mcp.aclose()

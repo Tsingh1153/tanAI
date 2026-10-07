@@ -11,7 +11,7 @@ Two cooperating pieces:
 Both reuse the embedding + vector infrastructure introduced for RAG.
 """
 
-from .memory_service import MemoryService
+from .memory_service import MemoryService, worth_mining
 from .summarizer import Summarizer
 
-__all__ = ["MemoryService", "Summarizer"]
+__all__ = ["MemoryService", "Summarizer", "worth_mining"]

@@ -41,7 +41,7 @@ from .config import get_settings
 from .database import SessionLocal, get_session, init_db
 from .hardware import detect_hardware
 from .imagegen import ImageGenError, build_image_generator
-from .memory import MemoryService
+from .memory import MemoryService, worth_mining
 from .memory.tokens import estimate_tokens
 from .personas import PERSONAS, get_persona
 from .providers import (
@@ -1262,7 +1262,7 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                     # off the path of the next first token. Spawned before
                     # "done" so a client closing the socket can't cancel it.
                     _spawn(_compact_history(conversation_id, model, provider_name))
-                    if use_memory and parts:
+                    if use_memory and parts and worth_mining(content):
                         _spawn(
                             _extract_memories(
                                 conversation_id,
@@ -1546,7 +1546,7 @@ async def _run_agent_turn(
         await websocket.send_json({"type": "done"})
 
     # Mine the exchange for durable memories, as in the normal chat path.
-    if use_memory:
+    if use_memory and worth_mining(content):
         _spawn(
             _extract_memories(
                 conversation_id,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
@@ -15,6 +16,17 @@ from ..rag.retriever import pack_vector, retrieve, unpack_vector
 from ..repositories import MemoryRepository
 
 _MAX_INJECTED = 8
+
+# Extraction looks for facts about the user, which they state in the first
+# person. Skipping turns without any spares a full LLM call on "thanks" or
+# "explain recursion" while the user may be typing their next message.
+_SELF_REF = re.compile(
+    r"\b(i|i'm|im|i've|i'd|i'll|me|my|mine|myself|we|our|us)\b", re.IGNORECASE
+)
+
+
+def worth_mining(user_content: str) -> bool:
+    return bool(_SELF_REF.search(user_content))
 
 
 class MemoryService:

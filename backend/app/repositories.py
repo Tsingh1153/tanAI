@@ -148,6 +148,15 @@ class MessageRepository:
         )
         return list(result.scalars().all())
 
+    async def last_user_content(self, conversation_id: str) -> str | None:
+        result = await self._session.execute(
+            select(Message.content)
+            .where(Message.conversation_id == conversation_id, Message.role == "user")
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
     async def delete_from(self, conversation_id: str, message_id: str) -> int:
         """Delete a message and everything after it (edit/regenerate).
 

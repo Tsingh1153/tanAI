@@ -51,7 +51,11 @@ from .providers import (
     make_openai_provider,
 )
 from .rag import IngestionService, RagService
-from .rag.embeddings import EmbeddingProvider, OllamaEmbeddingProvider
+from .rag.embeddings import (
+    CachedEmbeddings,
+    EmbeddingProvider,
+    OllamaEmbeddingProvider,
+)
 from .rag.parsers import supported_extension
 from .repositories import (
     ChunkRepository,
@@ -125,10 +129,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 )
             )
     app.state.registry = registry
-    app.state.embeddings = OllamaEmbeddingProvider(
-        settings.ollama_base_url,
-        settings.embedding_model,
-        keep_alive=settings.ollama_keep_alive,
+    app.state.embeddings = CachedEmbeddings(
+        OllamaEmbeddingProvider(
+            settings.ollama_base_url,
+            settings.embedding_model,
+            keep_alive=settings.ollama_keep_alive,
+        )
     )
 
     # Connect saved MCP servers so their tools are available to the agent.

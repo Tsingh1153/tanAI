@@ -89,3 +89,19 @@ def test_cached_embeddings_dedupes_single_queries() -> None:
         assert _CountingEmbeddings.calls == 5
 
     asyncio.run(run())
+
+
+def test_cached_embeddings_shares_concurrent_lookups() -> None:
+    class Slow(_CountingEmbeddings):
+        async def embed(self, texts: list[str]) -> list[list[float]]:
+            await asyncio.sleep(0.01)
+            return await super().embed(texts)
+
+    async def run() -> None:
+        _CountingEmbeddings.calls = 0
+        cached = CachedEmbeddings(Slow())
+        a, b = await asyncio.gather(cached.embed(["same"]), cached.embed(["same"]))
+        assert a == b
+        assert _CountingEmbeddings.calls == 1
+
+    asyncio.run(run())

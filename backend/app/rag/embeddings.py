@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 
 import httpx
 
@@ -87,3 +89,58 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
 
     async def aclose(self) -> None:
         await self._client.aclose()
+
+
+class CachedEmbeddings(EmbeddingProvider):
+    """LRU cache for single-text embeds.
+
+    One chat turn embeds the same message for memory recall and for RAG; this
+    makes the second lookup free. Batches (ingestion) pass straight through so
+    document chunks don't evict recent queries.
+    """
+
+    def __init__(self, inner: EmbeddingProvider, size: int = 256) -> None:
+        self._inner = inner
+        self._size = size
+        self._cache: OrderedDict[str, list[float]] = OrderedDict()
+        # Requests in flight, so concurrent lookups of one text share a call.
+        self._pending: dict[str, asyncio.Future[list[float]]] = {}
+        self.name = inner.name
+        self.model = inner.model
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        if len(texts) != 1:
+            return await self._inner.embed(texts)
+        text = texts[0]
+        hit = self._cache.get(text)
+        if hit is not None:
+            self._cache.move_to_end(text)
+            return [hit]
+        pending = self._pending.get(text)
+        if pending is not None:
+            return [await asyncio.shield(pending)]
+
+        future: asyncio.Future[list[float]] = asyncio.get_running_loop().create_future()
+        self._pending[text] = future
+        try:
+            vector = (await self._inner.embed(texts))[0]
+        except asyncio.CancelledError:
+            future.cancel()
+            raise
+        except Exception as exc:
+            future.set_exception(exc)
+            future.exception()  # mark retrieved when nobody else was waiting
+            raise
+        finally:
+            self._pending.pop(text, None)
+        future.set_result(vector)
+        self._cache[text] = vector
+        if len(self._cache) > self._size:
+            self._cache.popitem(last=False)
+        return [vector]
+
+    async def health(self) -> bool:
+        return await self._inner.health()
+
+    async def aclose(self) -> None:
+        await self._inner.aclose()

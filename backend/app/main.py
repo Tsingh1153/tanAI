@@ -6,6 +6,7 @@ import asyncio
 import json
 import os
 import tempfile
+import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -376,6 +377,7 @@ async def pull_model(
                 yield f"data: {line}\n\n"
         except Exception as exc:
             yield f"data: {json.dumps({'status': 'error', 'error': str(exc)})}\n\n"
+        _forget_models()
         yield f"data: {json.dumps({'status': 'done'})}\n\n"
 
     return StreamingResponse(events(), media_type="text/event-stream")
@@ -389,6 +391,7 @@ async def delete_model(
     if provider is None or not hasattr(provider, "delete_model"):
         raise HTTPException(status_code=400, detail="Requires the Ollama backend.")
     await provider.delete_model(name)
+    _forget_models()
     return Response(status_code=204)
 
 
@@ -461,6 +464,7 @@ async def add_provider(
         api_key=payload.api_key,
     )
     registry.register(provider)
+    _forget_models()
     return ProviderOut(
         name=name,
         label=payload.label,
@@ -487,6 +491,7 @@ async def remove_provider(
         )
     await repo.delete(row)
     await registry.unregister(name)
+    _forget_models()
     return Response(status_code=204)
 
 
@@ -1349,16 +1354,22 @@ async def _last_user_content(conversation_id: str) -> str | None:
     """Most recent prior user message, for context-aware Auto routing."""
 
     async with SessionLocal() as session:
-        rows = await MessageRepository(session).list_for_conversation(conversation_id)
-    for row in reversed(rows):
-        if row.role == "user":
-            return row.content
-    return None
+        return await MessageRepository(session).last_user_content(conversation_id)
+
+
+# Auto routing needs the installed model list every turn; Ollama's /api/tags is
+# local but not free, and the list rarely changes mid-conversation.
+_MODELS_TTL = 15.0
+_models_cache: tuple[float, list[tuple[str, str]]] | None = None
 
 
 async def _available_models(registry: ProviderRegistry) -> list[tuple[str, str]]:
     """(model_name, provider_name) across every reachable provider, for routing."""
 
+    global _models_cache
+    now = time.monotonic()
+    if _models_cache and now - _models_cache[0] < _MODELS_TTL:
+        return _models_cache[1]
     out: list[tuple[str, str]] = []
     for provider in registry.all():
         try:
@@ -1366,7 +1377,14 @@ async def _available_models(registry: ProviderRegistry) -> list[tuple[str, str]]
                 out.append((m.name, provider.name))
         except Exception:
             continue
+    if out:
+        _models_cache = (now, out)
     return out
+
+
+def _forget_models() -> None:
+    global _models_cache
+    _models_cache = None
 
 
 async def _persona_prompt(persona_id: str | None) -> str | None:

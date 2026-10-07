@@ -12,6 +12,7 @@ import asyncio
 import hashlib
 import os
 import tempfile
+import time
 
 os.environ.setdefault(
     "LOCALMIND_DATABASE_URL",
@@ -137,7 +138,12 @@ def test_compression_and_memory() -> None:
                 )
                 while ws.receive_json()["type"] != "done":
                     pass
-        state = client.get(f"/api/conversations/{conv['id']}").json()
+        # Summarizing runs after each reply, off the critical path.
+        for _ in range(50):
+            state = client.get(f"/api/conversations/{conv['id']}").json()
+            if state["summarized_count"]:
+                break
+            time.sleep(0.05)
         assert state["summarized_count"] > 0, "history was not compressed"
         assert state["summary"], "expected a rolling summary"
 

@@ -16,6 +16,25 @@ class CompressionResult:
     changed: bool
 
 
+def split_tail(
+    messages: list[ChatMessage], budget: int
+) -> tuple[list[ChatMessage], list[ChatMessage]]:
+    """Split into (overflow, kept): kept is the longest tail that fits the budget.
+
+    The newest message is always kept, even if it alone exceeds the budget.
+    """
+
+    used = 0
+    keep_start = len(messages)
+    for i in range(len(messages) - 1, -1, -1):
+        cost = estimate_tokens(messages[i].content) + 4
+        if keep_start < len(messages) and used + cost > budget:
+            break
+        used += cost
+        keep_start = i
+    return messages[:keep_start], messages[keep_start:]
+
+
 class Summarizer:
     def __init__(self, provider: LLMProvider) -> None:
         self._provider = provider
@@ -30,22 +49,8 @@ class Summarizer:
     ) -> CompressionResult:
         """Fold overflowing older turns into the summary; return the live tail."""
 
-        # Turns not yet represented by the existing summary.
         candidates = messages[summarized_count:]
-
-        # Keep as many trailing turns as fit in the budget.
-        kept: list[ChatMessage] = []
-        used = 0
-        keep_start = len(candidates)
-        for i in range(len(candidates) - 1, -1, -1):
-            cost = estimate_tokens(candidates[i].content) + 4
-            if kept and used + cost > budget:
-                break
-            kept.insert(0, candidates[i])
-            used += cost
-            keep_start = i
-
-        overflow = candidates[:keep_start]
+        overflow, kept = split_tail(candidates, budget)
         if not overflow:
             # Nothing new to compress; reuse whatever summary we already had.
             return CompressionResult(

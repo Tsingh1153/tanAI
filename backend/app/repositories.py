@@ -32,12 +32,13 @@ class ConversationRepository:
         )
         return list(result.scalars().all())
 
-    async def get(self, conversation_id: str) -> Conversation | None:
-        result = await self._session.execute(
-            select(Conversation)
-            .where(Conversation.id == conversation_id)
-            .options(selectinload(Conversation.messages))
-        )
+    async def get(
+        self, conversation_id: str, with_messages: bool = True
+    ) -> Conversation | None:
+        stmt = select(Conversation).where(Conversation.id == conversation_id)
+        if with_messages:
+            stmt = stmt.options(selectinload(Conversation.messages))
+        result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def create(self, model: str, title: str = "New chat") -> Conversation:

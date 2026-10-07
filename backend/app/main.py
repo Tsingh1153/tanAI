@@ -1082,6 +1082,7 @@ async def chat_once(
             status_code=502, detail=f"Generation failed: {exc}"
         ) from exc
 
+    _spawn(_compact_history(conversation_id, payload.model, payload.provider))
     return MessageOut(
         id="",
         role="assistant",
@@ -1186,7 +1187,56 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                 )
                 continue
 
-            # Each turn gets its own DB session bound to this handler.
+            await websocket.send_json({"type": "start"})
+
+            # Memory recall, web search and RAG are independent, so run them
+            # together; the slowest one sets the wait instead of their sum.
+            mem_result, web_result, rag_result = await asyncio.gather(
+                _memory_context(content, embeddings) if use_memory else _none(),
+                _web_context(content) if use_web else _none(),
+                _rag_context(conversation_id, content, document_ids, embeddings)
+                if use_rag
+                else _none(),
+                return_exceptions=True,
+            )
+
+            context_primes: list[str] = []
+            # Memory and web are enhancements; their failures never block.
+            if isinstance(mem_result, tuple):
+                mem_prime, used = mem_result
+                if mem_prime:
+                    context_primes.append(mem_prime)
+                if used:
+                    await websocket.send_json(
+                        {
+                            "type": "memory",
+                            "data": [
+                                MemoryOut.model_validate(m).model_dump(mode="json")
+                                for m in used
+                            ],
+                        }
+                    )
+            if use_web:
+                web_sources: list[dict] = []
+                if isinstance(web_result, tuple):
+                    web_prime, web_sources = web_result
+                    if web_prime:
+                        context_primes.append(web_prime)
+                await websocket.send_json({"type": "web_sources", "data": web_sources})
+            if use_rag:
+                if isinstance(rag_result, BaseException):
+                    await websocket.send_json(
+                        {"type": "error", "detail": f"Retrieval failed: {rag_result}"}
+                    )
+                    continue
+                rag_prime, sources = rag_result
+                if rag_prime:
+                    context_primes.append(rag_prime)
+                await websocket.send_json(
+                    {"type": "sources", "data": [s.model_dump() for s in sources]}
+                )
+
+            parts: list[str] = []
             async with SessionLocal() as session:
                 service = ChatService(
                     ConversationRepository(session),
@@ -1194,98 +1244,35 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                     registry,
                     settings,
                 )
-                await websocket.send_json({"type": "start"})
-
-                system_primes: list[str] = []
-                if persona_prompt:
-                    system_primes.append(persona_prompt)
-
-                # Long-term memory recall (best-effort; never blocks the answer).
-                if use_memory:
-                    try:
-                        mem_service = MemoryService(
-                            MemoryRepository(session), embeddings, settings
-                        )
-                        mem_prime, used = await mem_service.build_prompt(
-                            content, settings.memory_top_k
-                        )
-                        if mem_prime:
-                            system_primes.append(mem_prime)
-                        if used:
-                            await websocket.send_json(
-                                {
-                                    "type": "memory",
-                                    "data": [
-                                        MemoryOut.model_validate(m).model_dump(
-                                            mode="json"
-                                        )
-                                        for m in used
-                                    ],
-                                }
-                            )
-                    except Exception:
-                        pass  # memory is an enhancement, not a hard dependency
-
-                # Optional web search grounding (best-effort; never blocks).
-                if use_web:
-                    try:
-                        web_prime, web_sources = await _web_context(content)
-                        if web_prime:
-                            system_primes.append(web_prime)
-                        await websocket.send_json(
-                            {"type": "web_sources", "data": web_sources}
-                        )
-                    except Exception:
-                        await websocket.send_json({"type": "web_sources", "data": []})
-
-                # Optional RAG retrieval, scoped to this chat's documents plus
-                # the global memory set. Explicit document_ids from the client
-                # further narrow the set if provided.
-                if use_rag:
-                    try:
-                        allowed = await DocumentRepository(
-                            session
-                        ).ready_ids_for_conversation(conversation_id)
-                        if document_ids:
-                            allowed = [d for d in allowed if d in document_ids]
-                        if allowed:
-                            rag = RagService(ChunkRepository(session), embeddings)
-                            rag_prime, sources = await rag.build_context(
-                                content, settings.rag_top_k, allowed
-                            )
-                            if rag_prime:
-                                system_primes.append(rag_prime)
-                            await websocket.send_json(
-                                {
-                                    "type": "sources",
-                                    "data": [s.model_dump() for s in sources],
-                                }
-                            )
-                        else:
-                            # No documents in scope for this chat.
-                            await websocket.send_json({"type": "sources", "data": []})
-                    except Exception as exc:
-                        await websocket.send_json(
-                            {
-                                "type": "error",
-                                "detail": f"Retrieval failed: {exc}",
-                            }
-                        )
-                        continue
-
-                parts: list[str] = []
                 try:
                     async for token in service.stream_turn(
                         conversation_id,
                         content,
                         model,
                         provider_name=provider_name,
-                        system_primes=system_primes,
+                        system_primes=[persona_prompt] if persona_prompt else None,
+                        context_primes=context_primes,
                         images=images,
                         persist_user=not regenerate,
                     ):
                         parts.append(token)
                         await websocket.send_json({"type": "token", "data": token})
+                    # Both turns are saved now. Summarize overflowing history
+                    # and mine the exchange for memories in the background,
+                    # off the path of the next first token. Spawned before
+                    # "done" so a client closing the socket can't cancel it.
+                    _spawn(_compact_history(conversation_id, model, provider_name))
+                    if use_memory and parts:
+                        _spawn(
+                            _extract_memories(
+                                conversation_id,
+                                content,
+                                "".join(parts),
+                                model or settings.default_model,
+                                registry,
+                                embeddings,
+                            )
+                        )
                     await websocket.send_json({"type": "done"})
                 except ConversationNotFound:
                     await websocket.send_json(
@@ -1298,20 +1285,64 @@ async def chat_ws(websocket: WebSocket, conversation_id: str) -> None:
                     )
                     continue
 
-            # Fire-and-forget: mine the completed exchange for durable memories.
-            if use_memory and parts:
-                asyncio.create_task(
-                    _extract_memories(
-                        conversation_id,
-                        content,
-                        "".join(parts),
-                        model or settings.default_model,
-                        registry,
-                        embeddings,
-                    )
-                )
     except WebSocketDisconnect:
         return
+
+
+_background: set[asyncio.Task] = set()
+
+
+def _spawn(coro) -> None:
+    """Fire-and-forget, holding a reference so the task isn't GC'd mid-run."""
+
+    task = asyncio.create_task(coro)
+    _background.add(task)
+    task.add_done_callback(_background.discard)
+
+
+async def _none() -> None:
+    return None
+
+
+async def _memory_context(content: str, embeddings: EmbeddingProvider):
+    async with SessionLocal() as session:
+        service = MemoryService(MemoryRepository(session), embeddings, settings)
+        return await service.build_prompt(content, settings.memory_top_k)
+
+
+async def _rag_context(
+    conversation_id: str,
+    content: str,
+    document_ids: list[str] | None,
+    embeddings: EmbeddingProvider,
+) -> tuple[str | None, list]:
+    """RAG over this chat's documents plus the global set, optionally narrowed."""
+
+    async with SessionLocal() as session:
+        allowed = await DocumentRepository(session).ready_ids_for_conversation(
+            conversation_id
+        )
+        if document_ids:
+            allowed = [d for d in allowed if d in document_ids]
+        if not allowed:
+            return None, []
+        rag = RagService(ChunkRepository(session), embeddings)
+        return await rag.build_context(content, settings.rag_top_k, allowed)
+
+
+async def _compact_history(
+    conversation_id: str, model: str | None, provider_name: str | None
+) -> None:
+    try:
+        async with SessionLocal() as session:
+            await ChatService(
+                ConversationRepository(session),
+                MessageRepository(session),
+                app.state.registry,
+                settings,
+            ).compact(conversation_id, model, provider_name)
+    except Exception:
+        return  # retried after the next turn
 
 
 async def _last_user_content(conversation_id: str) -> str | None:
@@ -1516,7 +1547,7 @@ async def _run_agent_turn(
 
     # Mine the exchange for durable memories, as in the normal chat path.
     if use_memory:
-        asyncio.create_task(
+        _spawn(
             _extract_memories(
                 conversation_id,
                 content,

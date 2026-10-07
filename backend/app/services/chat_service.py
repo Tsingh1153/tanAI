@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import os
 import uuid
 from collections.abc import AsyncIterator
 
 from ..config import Settings, get_settings
-from ..memory.summarizer import Summarizer
-from ..memory.tokens import estimate_tokens
+from ..memory.summarizer import Summarizer, split_tail
 from ..providers import ChatMessage, ProviderRegistry
 from ..repositories import ConversationRepository, MessageRepository
 
@@ -35,6 +35,10 @@ _VISION_HINTS = (
 def _looks_vision(name: str) -> bool:
     lowered = name.lower()
     return any(hint in lowered for hint in _VISION_HINTS)
+
+
+# One lock per conversation; a handful of entries for a single-user app.
+_compact_locks: dict[str, asyncio.Lock] = {}
 
 
 class ConversationNotFound(Exception):
@@ -136,16 +140,23 @@ class ChatService:
         system_primes: list[str] | None = None,
         images: list[str] | None = None,
         persist_user: bool = True,
+        context_primes: list[str] | None = None,
     ) -> AsyncIterator[str]:
         """Run one user->assistant turn, yielding assistant tokens.
 
         Persists the user turn before generation and the assistant turn after,
-        compresses old turns into the summary past the token budget, and
-        auto-titles from the first message. system_primes are non-persisted
-        system messages (memory, retrieved context) prepended to the transcript.
+        and auto-titles from the first message. Summarizing old turns is left to
+        compact(), which callers run after the reply so it never delays the
+        first token.
+
+        Prompt order keeps the prefix stable across turns so Ollama can reuse its
+        KV cache: system_primes (e.g. persona) -> summary -> history ->
+        context_primes (per-turn memory/RAG/web) -> the new user message.
         """
 
-        conversation = await self._conversations.get(conversation_id)
+        conversation = await self._conversations.get(
+            conversation_id, with_messages=False
+        )
         if conversation is None:
             raise ConversationNotFound(conversation_id)
 
@@ -164,7 +175,7 @@ class ChatService:
         history = [ChatMessage(role=m.role, content=m.content) for m in history_rows]
 
         # Vision handling for the current turn's images.
-        primes: list[str] = list(system_primes or [])
+        context: list[str] = list(context_primes or [])
         if images and history:
             if _looks_vision(chosen_model):
                 history[-1].images = images
@@ -175,45 +186,36 @@ class ChatService:
                     provider, chosen_model, images, user_content
                 )
                 if vision_prime:
-                    primes.append(vision_prime)
+                    context.append(vision_prime)
                 else:
                     history[-1].images = images  # fallback (may be ignored)
 
-        # --- Context compression ---
-        summary_text = conversation.summary
-        recent = history[conversation.summarized_count :]
+        live = history[conversation.summarized_count :]
         budget = self._settings.history_token_budget
-        total_tokens = sum(estimate_tokens(m.content) for m in history)
-        if budget and (total_tokens > budget or conversation.summarized_count):
-            result = await Summarizer(provider).compress(
-                chosen_model,
-                conversation.summary,
-                conversation.summarized_count,
-                history,
-                budget,
-            )
-            recent = result.recent
-            summary_text = result.summary
-            if result.changed:
-                await self._conversations.update(
-                    conversation,
-                    summary=result.summary,
-                    summarized_count=result.summarized_count,
-                )
+        if budget:
+            # Turns past the budget get summarized after this reply; until then
+            # they stay in, capped so a slow or failed summary can't overrun
+            # num_ctx.
+            _, live = split_tail(live, budget * 2)
 
-        # --- Assemble prompt: primes -> summary -> live turns ---
-        prompt: list[ChatMessage] = []
-        for prime in primes:
-            if prime:
-                prompt.append(ChatMessage(role="system", content=prime))
-        if summary_text:
+        prompt: list[ChatMessage] = [
+            ChatMessage(role="system", content=p) for p in system_primes or [] if p
+        ]
+        if conversation.summary:
             prompt.append(
                 ChatMessage(
                     role="system",
-                    content=f"Summary of earlier conversation:\n{summary_text}",
+                    content=f"Summary of earlier conversation:\n{conversation.summary}",
                 )
             )
-        prompt.extend(recent)
+        context_msgs = [ChatMessage(role="system", content=p) for p in context if p]
+        if live and live[-1].role == "user":
+            prompt.extend(live[:-1])
+            prompt.extend(context_msgs)
+            prompt.append(live[-1])
+        else:
+            prompt.extend(live)
+            prompt.extend(context_msgs)
 
         parts: list[str] = []
         async for token in provider.stream_chat(chosen_model, prompt):
@@ -233,3 +235,48 @@ class ChatService:
         # Keep the persisted model in sync if the caller overrode it.
         if chosen_model != conversation.model:
             await self._conversations.update(conversation, model=chosen_model)
+
+    async def compact(
+        self,
+        conversation_id: str,
+        model: str | None = None,
+        provider_name: str | None = None,
+    ) -> bool:
+        """Fold turns past the history budget into the rolling summary.
+
+        Serialized per conversation so overlapping turns can't summarize the
+        same messages twice. Returns True if the summary changed.
+        """
+
+        budget = self._settings.history_token_budget
+        if not budget:
+            return False
+        lock = _compact_locks.setdefault(conversation_id, asyncio.Lock())
+        async with lock:
+            conversation = await self._conversations.get(
+                conversation_id, with_messages=False
+            )
+            if conversation is None:
+                return False
+            rows = await self._messages.list_for_conversation(conversation_id)
+            history = [ChatMessage(role=m.role, content=m.content) for m in rows]
+            overflow, _ = split_tail(history[conversation.summarized_count :], budget)
+            if not overflow:
+                return False
+            # Fold down to half the budget, not just under it. The live window
+            # then stays put for several turns instead of sliding every turn,
+            # so Ollama keeps reusing its KV cache and summaries run less often.
+            result = await Summarizer(self._registry.get(provider_name)).compress(
+                model or conversation.model,
+                conversation.summary,
+                conversation.summarized_count,
+                history,
+                budget // 2,
+            )
+            if result.changed:
+                await self._conversations.update(
+                    conversation,
+                    summary=result.summary,
+                    summarized_count=result.summarized_count,
+                )
+            return result.changed

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -259,9 +259,27 @@ class ChunkRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    @property
+    def session(self) -> AsyncSession:
+        return self._session
+
     async def add_many(self, chunks: list[Chunk]) -> None:
         self._session.add_all(chunks)
         await self._session.commit()
+
+    async def any(self, document_ids: list[str] | None = None) -> bool:
+        stmt = select(Chunk.id).limit(1)
+        if document_ids:
+            stmt = stmt.where(Chunk.document_id.in_(document_ids))
+        return (await self._session.execute(stmt)).first() is not None
+
+    async def get_many_with_documents(self, ids: list[str]) -> dict[str, Chunk]:
+        if not ids:
+            return {}
+        result = await self._session.execute(
+            select(Chunk).where(Chunk.id.in_(ids)).options(selectinload(Chunk.document))
+        )
+        return {c.id: c for c in result.scalars().all()}
 
     async def all_with_documents(
         self, document_ids: list[str] | None = None
@@ -275,8 +293,8 @@ class ChunkRepository:
         return list(result.scalars().all())
 
     async def count(self) -> int:
-        result = await self._session.execute(select(Chunk.id))
-        return len(result.scalars().all())
+        result = await self._session.execute(select(func.count(Chunk.id)))
+        return result.scalar_one()
 
 
 class MemoryRepository:

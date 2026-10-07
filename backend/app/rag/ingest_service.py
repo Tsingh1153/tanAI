@@ -6,6 +6,7 @@ from ..models import Chunk, Document
 from ..repositories import ChunkRepository, DocumentRepository
 from .chunker import chunk_segments
 from .embeddings import EmbeddingProvider
+from .index import chunk_index
 from .parsers import extract_segments
 from .retriever import pack_vector
 
@@ -58,6 +59,7 @@ class IngestionService:
                 )
 
             await self._chunks.add_many(chunk_rows)
+            chunk_index.invalidate()
             return await self._documents.mark_ready(document, len(chunk_rows))
         except Exception as exc:  # any parse/embed failure -> visible error state
             return await self._documents.mark_error(document, str(exc))

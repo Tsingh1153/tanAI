@@ -147,6 +147,15 @@ class OllamaProvider(LLMProvider):
             )
         return ChatResult(content=message.get("content", "") or "", tool_calls=calls)
 
+    async def load(self, model: str) -> None:
+        """Load a model into memory without generating (empty-prompt generate)."""
+
+        resp = await self._client.post(
+            "/api/generate",
+            json={"model": model, "keep_alive": self._keep_alive},
+        )
+        resp.raise_for_status()
+
     async def pull(self, name: str) -> AsyncIterator[str]:
         """Stream Ollama's newline-delimited JSON pull progress for a model."""
 

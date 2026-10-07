@@ -1406,10 +1406,9 @@ async def _warm_up_models() -> None:
     """Load the default chat + embedding models so the first request is fast."""
 
     try:
-        provider = app.state.registry.get("ollama")
-        await provider.complete(
-            settings.default_model, [ChatMessage(role="user", content="hi")]
-        )
+        # Loading without a prompt skips generating a throwaway reply, which
+        # would hold the GPU while the user sends their first message.
+        await app.state.registry.get("ollama").load(settings.default_model)
     except Exception:
         pass  # Ollama may be offline or the model not pulled yet.
     try:

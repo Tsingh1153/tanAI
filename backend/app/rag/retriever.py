@@ -30,7 +30,7 @@ class ScoredChunk:
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
-def _tokens(text: str) -> set[str]:
+def tokenize(text: str) -> set[str]:
     return set(_TOKEN_RE.findall(text.lower()))
 
 
@@ -64,18 +64,34 @@ def retrieve(
     matrix_norm = matrix / norms
     semantic = matrix_norm @ query_norm  # cosine similarity per chunk
 
-    # --- Lexical scores ---
-    q_terms = _tokens(query_text)
-    if q_terms:
-        lexical = np.array(
-            [len(q_terms & _tokens(c.content)) / len(q_terms) for c in chunks],
-            dtype=np.float32,
-        )
-    else:
-        lexical = np.zeros(len(chunks), dtype=np.float32)
-
-    # --- Blend ---
-    combined = alpha * _minmax(semantic) + (1.0 - alpha) * _minmax(lexical)
-
-    order = np.argsort(-combined)[:top_k]
+    lexical = lexical_scores(
+        tokenize(query_text), [tokenize(c.content) for c in chunks]
+    )
+    order, combined = blend(semantic, lexical, top_k, alpha)
     return [ScoredChunk(chunk=chunks[i], score=float(combined[i])) for i in order]
+
+
+def lexical_scores(q_terms: set[str], chunk_terms: list[set[str]]) -> np.ndarray:
+    """Fraction of query terms each chunk contains."""
+
+    if not q_terms:
+        return np.zeros(len(chunk_terms), dtype=np.float32)
+    return np.array(
+        [len(q_terms & terms) / len(q_terms) for terms in chunk_terms],
+        dtype=np.float32,
+    )
+
+
+def blend(
+    semantic: np.ndarray, lexical: np.ndarray, top_k: int, alpha: float
+) -> tuple[np.ndarray, np.ndarray]:
+    """Min-max both signals, mix them, return (top_k indices, combined scores)."""
+
+    combined = alpha * _minmax(semantic) + (1.0 - alpha) * _minmax(lexical)
+    if top_k < combined.size:
+        # argpartition is O(n); only the k winners need a full sort.
+        top = np.argpartition(-combined, top_k)[:top_k]
+        order = top[np.argsort(-combined[top], kind="stable")]
+    else:
+        order = np.argsort(-combined, kind="stable")
+    return order, combined

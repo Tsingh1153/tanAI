@@ -5,7 +5,8 @@ from __future__ import annotations
 from ..repositories import ChunkRepository
 from ..schemas import RetrievedSource
 from .embeddings import EmbeddingProvider
-from .retriever import ScoredChunk, retrieve
+from .index import chunk_index
+from .retriever import ScoredChunk
 
 _SNIPPET_CHARS = 240
 
@@ -21,11 +22,18 @@ class RagService:
         top_k: int = 5,
         document_ids: list[str] | None = None,
     ) -> list[ScoredChunk]:
-        candidates = await self._chunks.all_with_documents(document_ids)
-        if not candidates:
+        if not await self._chunks.any(document_ids):
             return []
         query_vector = (await self._embeddings.embed([query]))[0]
-        return retrieve(query_vector, query, candidates, top_k)
+        ranked = await chunk_index.search(
+            self._chunks.session, query_vector, query, top_k, document_ids
+        )
+        chunks = await self._chunks.get_many_with_documents([cid for cid, _ in ranked])
+        return [
+            ScoredChunk(chunk=chunks[cid], score=score)
+            for cid, score in ranked
+            if cid in chunks
+        ]
 
     @staticmethod
     def _to_sources(scored: list[ScoredChunk]) -> list[RetrievedSource]:

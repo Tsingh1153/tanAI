@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
-from sqlalchemy import inspect, text
+from sqlalchemy import event, inspect, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -19,6 +19,19 @@ settings = get_settings()
 
 # ``future=True`` opts into 2.0-style behavior; ``echo`` is off for clean logs.
 engine = create_async_engine(settings.database_url, echo=False, future=True)
+
+if engine.dialect.name == "sqlite":
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _sqlite_pragmas(dbapi_conn, _record) -> None:
+        # WAL lets reads run while a background task (memory extraction,
+        # summarizing) writes; NORMAL sync is safe under WAL and skips an
+        # fsync per commit.
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute("PRAGMA synchronous=NORMAL")
+        cur.close()
+
 
 # ``expire_on_commit=False`` lets us keep using ORM objects after commit, which
 # matters when we serialize a freshly-created row into a response model.

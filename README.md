@@ -461,6 +461,16 @@ The smoke test injects a fake provider, so it runs without Ollama and verifies
 health, model listing, conversation CRUD, WebSocket streaming, history
 persistence, and auto-titling.
 
+To measure the chat hot path (RAG search time, time to first token, embedding
+calls and prompt tokens per turn) without Ollama:
+
+```bash
+cd backend && .venv/bin/python bench/bench_latency.py
+```
+
+Model calls are faked with fixed delays, so the numbers show tanAI's own
+overhead, not model speed.
+
 ---
 
 ## Roadmap

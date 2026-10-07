@@ -11,6 +11,23 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Changed
+- **Faster first token on long chats.** Memory recall, web search and document
+  search run at the same time; summarizing old messages happens after the reply
+  instead of before it; and the prompt is ordered so Ollama can reuse its cache
+  of the earlier conversation instead of re-reading it every message.
+- **Document search keeps vectors in memory** instead of reloading every chunk
+  from the database on each question (over 15x faster at 10k chunks).
+- Memory extraction skips messages that say nothing about you; startup loads the
+  model without generating a throwaway reply; SQLite runs in WAL mode.
+
+### Added
+- `backend/bench/bench_latency.py`, a latency benchmark that runs without Ollama.
+
+---
+
 ## [1.5.0] — 2026-09-15
 
 ### Added
